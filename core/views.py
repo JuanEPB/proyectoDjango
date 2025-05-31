@@ -192,6 +192,7 @@ def create_medicamento_view(request):
         cantidad = request.POST.get("cantidad")
 
         try:
+            
             response = requests.post("http://localhost:3000/api/medicamentos/create", json={
                 "nombre": nombre,
                 "descripcion": descripcion,
