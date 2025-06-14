@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usuarios - Pharmacontrol</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      display: flex;
+      min-height: 100vh;
+      background-color: #f9f9f9;
+    }
+
+    aside {
+      width: 220px;
+      background-color: #ffffff;
+      padding: 20px;
+      border-right: 1px solid #ddd;
+    }
+
+    aside h2 {
+      font-size: 20px;
+      color: #007bff;
+      margin-bottom: 30px;
+    }
+
+    aside ul {
+      list-style: none;
+    }
+
+    aside li {
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+      color: #555;
+      cursor: pointer;
+    }
+
+    aside li:hover, aside li.active {
+      color: #007bff;
+    }
+
+    aside li span {
+      margin-left: 8px;
+    }
+
+    .bottom-options {
+      margin-top: 40px;
+    }
+
+    main {
+      flex-grow: 1;
+      padding: 20px 30px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .search-bar input {
+      padding: 8px 12px;
+      width: 300px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .user-icon {
+      border-radius: 50%;
+      width: 35px;
+      height: 35px;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      padding: 8px 12px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn.outline {
+      background-color: white;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background-color: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background-color: #f3f4f6;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+
+    .pagination button {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      background-color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .pagination button:hover {
+      background-color: #f0f0f0;
+    }
+
+    td .btn { 
+  padding: 6px 10px;
+  font-size: 14px;
+  margin-right: 5px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+  </style>
+</head>
+<body>
+  <aside>
+    <h2>Pharmacontrol</h2>
+    <ul>
+      <li><span></span><span>Dashboard</span></li>
+      <li><span></span><span>Inventario</span></li>
+      <li><span></span><span>Reports</span></li>
+      <li class="active"><span></span><span>Usuarios</span></li>
+      <li><span></span><span>Pedidos</span></li>
+      <li><span></span><span>Proveedores</span></li>
+    </ul>
+    <div class="bottom-options">
+      <ul>
+        <li><span></span><span>Settings</span></li>
+        <li><span></span><span>Log Out</span></li>
+      </ul>
+    </div>
+  </aside>
+
+  <main>
+    <div class="top-bar">
+      <div class="search-bar">
+        <input type="text" placeholder="Search product, supplier, order" />
+      </div>
+      <img src="https://via.placeholder.com/35" alt="User" class="user-icon" />
+    </div>
+
+    <h1>Usuarios</h1>
+
+<div class="btn-group">
+  <a href="{% url 'add_user' %}">
+    <button class="btn">Add Users</button>
+  </a>
+  <button class="btn outline">Filters</button>
+  <button class="btn outline">Download all</button>
+</div>
+
+
+
+
+
+    <table>
+<thead>
+  <tr>
+    <th>Nombre</th>
+    <th>Apellidos</th>
+    <th>Rol</th>
+    <th>Email</th>
+    <th>Acciones</th>
+  </tr>
+</thead>
+
+ <tbody>
+  {% for user in users %}
+    <tr>
+      <td>{{ user.nombre }}</td>
+      <td>{{ user.apellido }}</td>
+      <td>{{ user.rol }}</td>
+      <td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td>
+      <td>
+        <a href="{% url 'edit_user' user.id %}" class="btn">Editar</a>
+        <a href="{% url 'delete_user' user.id %}" class="btn outline" onclick="return confirm('¿Estás seguro de eliminar este usuario?');">Eliminar</a>
+      </td>
+    </tr>
+  {% endfor %}
+</tbody>
+
+    </table>
+
+    <div class="pagination">
+      <button>Previous</button>
+      <button>Next</button>
+    </div>
+  </main>
+</body>
+</html>
