@@ -1,0 +1,154 @@
+﻿# GUÍA DE ORGANIZACIÓN DE RAMAS EN DJANGO - SISTEMA DE FARMACIA
+
+## ESTRUCTURA ACTUAL DE FUNCIONES:
+
+1. Autenticación:
+   - login_view
+   - logout_view
+
+2. Gestión de Medicamentos:
+   - lista_medicamentos
+   - create_medicamento_view
+
+3. Gestión de Inventario:
+   - inventory_view
+
+4. Reportes:
+   - report_view
+
+5. Gestión de Usuarios:
+   - user_view
+
+6. Gestión de Pedidos:
+   - order_view
+
+7. Gestión de Proveedores:
+   - supplier_view
+
+8. Configuración:
+   - settings_view
+
+## CÓMO ORGANIZAR LAS RAMAS:
+
+1. PARA AUTENTICACIÓN:
+   git checkout -b feature/auth-sistema
+   Usar para:
+   - Modificar login_view
+   - Modificar logout_view
+   - Añadir recuperación de contraseña
+   - Añadir registro de usuarios
+
+2. PARA MEDICAMENTOS:
+   git checkout -b feature/medicamentos-crud
+   Usar para:
+   - Crear nuevos medicamentos
+   - Listar medicamentos
+   - Actualizar medicamentos
+   - Eliminar medicamentos
+
+3. PARA INVENTARIO:
+   git checkout -b feature/inventario-control
+   Usar para:
+   - Control de stock
+   - Alertas de inventario bajo
+   - Movimientos de inventario
+
+4. PARA REPORTES:
+   git checkout -b feature/reportes-sistema
+   Usar para:
+   - Reportes de ventas
+   - Reportes de inventario
+   - Estadísticas
+
+5. PARA USUARIOS:
+   git checkout -b feature/usuarios-gestion
+   Usar para:
+   - Gestión de permisos
+   - CRUD de usuarios
+   - Roles y perfiles
+
+6. PARA PEDIDOS:
+   git checkout -b feature/pedidos-sistema
+   Usar para:
+   - Crear pedidos
+   - Seguimiento de pedidos
+   - Estado de pedidos
+
+7. PARA PROVEEDORES:
+   git checkout -b feature/proveedores-gestion
+   Usar para:
+   - CRUD de proveedores
+   - Catálogo de productos por proveedor
+
+8. PARA CONFIGURACIÓN:
+   git checkout -b feature/configuracion-sistema
+   Usar para:
+   - Ajustes generales
+   - Parámetros del sistema
+
+## BUENAS PRÁCTICAS:
+
+1. NOMBRADO DE RAMAS:
+   - feature/[módulo]-[función]
+   - hotfix/[error-a-corregir]
+   - update/[mejora-a-realizar]
+
+2. EJEMPLO DE FLUJO DE TRABAJO:
+   # Para añadir nueva funcionalidad de ventas
+   git checkout -b feature/ventas-nuevo-proceso
+
+   # Para corregir un error en login
+   git checkout -b hotfix/auth-error-sesion
+
+   # Para mejorar el rendimiento de reportes
+   git checkout -b update/reportes-optimizacion
+
+3. CUÁNDO CREAR UNA NUEVA RAMA:
+   - Al iniciar una nueva funcionalidad
+   - Al corregir un bug
+   - Al hacer mejoras significativas
+   - Cuando los cambios afectarán múltiples archivos
+
+4. RECOMENDACIONES:
+   - No mezclar funcionalidades diferentes en una misma rama
+   - Mantener las ramas actualizadas con master
+   - Hacer commits frecuentes y descriptivos
+   - Probar antes de hacer merge
+
+## IMPORTANTE:
+- Siempre crear una rama nueva para cada funcionalidad
+- No modificar directamente en master
+- Documentar los cambios en los commits
+- Hacer pruebas antes de fusionar
+
+## COMANDOS ÚTILES DE GIT:
+
+1. Crear y cambiar a una nueva rama:
+   git checkout -b nombre-rama
+
+2. Ver en qué rama estás:
+   git branch
+
+3. Cambiar a una rama existente:
+   git checkout nombre-rama
+
+4. Actualizar tu rama con master:
+   git checkout master
+   git pull
+   git checkout tu-rama
+   git merge master
+
+5. Guardar cambios:
+   git add .
+   git commit -m "Descripción del cambio"
+   git push origin nombre-rama
+
+6. Fusionar tu rama con master:
+   git checkout master
+   git merge nombre-rama
+   git push origin master
+
+## SI ALGO SALE MAL:
+1. No entrar en pánico
+2. Guardar una copia de tus cambios no guardados
+3. Consultar con el líder del equipo
