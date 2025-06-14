@@ -1,0 +1,412 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, width=device-width">
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="side-bar">
+            <div class="top-parent">
+                <div class="top">
+                    <div class="logo">
+                        <div class="pharmacontrol">Pharmacontrol</div>
+                    </div>
+                </div>
+                <div class="list-menu">
+                    <div class="list-menu1">
+                        <div class="list-menu2">
+                            <div class="content">
+                                <i class="bi bi-house"></i>
+                                <div class="text">
+                                    <a href="{% url 'medicamentos'%}"> Dashobard</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-menu3">
+                            <div class="content">
+                                <i class="bi bi-box"></i>
+                                <div class="text">
+                                    <a href="{% url 'inventory'%}"> Inventario</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-menu3">
+                            <div class="content">
+                                <i class="bi bi-files"></i>
+                                <div class="text">
+                                    <a href="{% url 'reports'%}"> Reportes</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-menu3">
+                            <div class="content">
+                                <i class="bi bi-people"></i>
+                                <div class="text">
+                                    <a href="{% url 'users'%}"> Usuarios</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-menu3">
+                            <div class="content">
+                                <i class="bi bi-truck"></i>
+                                <div class="text">
+                                    <a href="{% url 'orders'%}"> Pedidos</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-menu3">
+                            <div class="content">
+                                <i class="bi bi-cart-check"></i>
+                                <div class="text">
+                                    <a href="{% url 'suppliers'%}"> Proveedores</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="list-menu-parent">
+                <div class="list-menu8">
+                    <div class="content">
+                        <i class="bi bi-gear"></i>
+                        <div class="text">
+                            <p><a href="{% url 'settings'%}"> Configuración</a></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="list-menu8">
+                    <div class="content">
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <div class="text">
+                                <button type="submit"> <i class="bi bi-door-open"></i>Cerrar sesión</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="top-bar"></div>
+            <div class="search-bar-parent">
+                <div class="search-bar">
+                    <img class="home-icon" alt="" src="Search.svg">
+                    <div class="search-product-supplier">Search product, supplier, order</div>
+                </div>
+                <div class="notification-parent">
+                    <i class="bi bi-bell"></i>
+                    {% comment %} imagen de usuario {% endcomment %}
+                </div>
+            </div>
+            <div class="notification-group">
+                <i class="bi bi-bell"></i>
+                {% comment %} imagen de usuario {% endcomment %}
+            </div>
+            <div class="sales-overview">
+                <div class="inventory-summary">Sales Overview</div>
+                <div class="sales">
+                    <img class="sales-icon" alt="" src="Sales.svg">
+                    <div class="sales-inner">
+                        <div class="parent">
+                            <div class="div">₹ 832</div>
+                            <div class="sales1">Sales</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="sales-overview-child"></div>
+                <div class="sales-overview-item"></div>
+                <div class="sales-overview-inner"></div>
+                <div class="revenue">
+                    <img class="sales-icon" alt="" src="Revenue.svg">
+                    <div class="sales-inner">
+                        <div class="parent">
+                            <div class="div">₹ 18,300</div>
+                            <div class="sales1">Revenue</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="profit">
+                    <img class="sales-icon" alt="" src="Profit.svg">
+                    <div class="sales-inner">
+                        <div class="parent">
+                            <div class="div">₹ 868</div>
+                            <div class="profit1">Profit</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cost">
+                    <img class="sales-icon" alt="" src="Cost.svg">
+                    <div class="cost-inner">
+                        <div class="parent">
+                            <div class="div">₹ 17,432</div>
+                            <div class="sales1">Cost</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="purchase-overview">
+                <div class="inventory-summary">Purchase Overview</div>
+                <div class="sales">
+                    <img class="sales-icon" alt="" src="Purchase.svg">
+                    <div class="cost-inner">
+                        <div class="parent1">
+                            <div class="div">82</div>
+                            <div class="sales1">Purchase</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="purchase-overview-child"></div>
+                <div class="purchase-overview-item"></div>
+                <div class="purchase-overview-inner"></div>
+                <div class="cancel">
+                    <img class="sales-icon" alt="" src="Cancel.svg">
+                    <div class="cost-inner">
+                        <div class="parent">
+                            <div class="div">5</div>
+                            <div class="sales1">Cancel</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cost2">
+                    <img class="sales-icon" alt="" src="Cost.svg">
+                    <div class="cost-child">
+                        <div class="parent1">
+                            <div class="div">₹ 13,573</div>
+                            <div class="profit1">Cost</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cost">
+                    <img class="sales-icon" alt="" src="Profit.svg">
+                    <div class="sales-inner">
+                        <div class="parent4">
+                            <div class="div">₹17,432</div>
+                            <div class="sales1">Return</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sales-overview2">
+                <div class="inventory-summary">Inventory Summary</div>
+                <div class="quantity-parent">
+                    <img class="sales-icon" alt="" src="Quantity.svg">
+                    <div class="parent5">
+                        <div class="div">868</div>
+                        <div class="quantity-in-hand">Quantity in Hand</div>
+                    </div>
+                </div>
+                <div class="on-the-way-parent">
+                    <img class="sales-icon" alt="" src="On the way.svg">
+                    <div class="parent5">
+                        <div class="div">200</div>
+                        <div class="quantity-in-hand">To be received</div>
+                    </div>
+                </div>
+                <div class="line-div"></div>
+            </div>
+            <div class="product-summary">
+                <div class="inventory-summary">Product Summary</div>
+                <div class="suppliers">
+                    <img class="sales-icon" alt="" src="Suppliers.svg">
+                    <div class="parent5">
+                        <div class="div">31</div>
+                        <div class="quantity-in-hand">Number of Suppliers</div>
+                    </div>
+                </div>
+                <div class="categories">
+                    <img class="sales-icon" alt="" src="Categories.svg">
+                    <div class="parent5">
+                        <div class="div">21</div>
+                        <div class="quantity-in-hand">Number of Categories</div>
+                    </div>
+                </div>
+                <div class="product-summary-child"></div>
+            </div>
+            <div class="dashboard-child"></div>
+            <div class="div12">0</div>
+            <div class="month">
+                <div class="jan">Jan</div>
+                <div class="jan">Feb</div>
+                <div class="jan">Mar</div>
+                <div class="jan">Apr</div>
+                <div class="jan">May</div>
+            </div>
+            <div class="orders">
+                <div class="jan">4000</div>
+                <div class="jan">3000</div>
+                <div class="jan">2000</div>
+                <div class="jan">1000</div>
+            </div>
+            <div class="order-summary">Order Summary</div>
+            <div class="sales-purchase">
+                <div class="sales-purchase1">Sales & Purchase</div>
+                <div class="lines">
+                    <img class="lines-child" alt="" src="Vector 6.svg">
+                    <img class="lines-child" alt="" src="Vector 5.svg">
+                    <img class="lines-child" alt="" src="Vector 4.svg">
+                    <img class="lines-child" alt="" src="Vector 3.svg">
+                    <img class="lines-child" alt="" src="Vector 2.svg">
+                    <img class="lines-child" alt="" src="Vector 1.svg">
+                </div>
+                <div class="graph">
+                    <div class="rectangle-parent">
+                        <div class="frame-child"></div>
+                        <div class="frame-item"></div>
+                    </div>
+                    <div class="rectangle-parent">
+                        <div class="frame-inner"></div>
+                        <div class="rectangle-div"></div>
+                    </div>
+                    <div class="rectangle-parent">
+                        <div class="frame-child1"></div>
+                        <div class="frame-child2"></div>
+                    </div>
+                    <div class="rectangle-parent">
+                        <div class="frame-child3"></div>
+                        <div class="frame-child4"></div>
+                    </div>
+                    <div class="rectangle-parent2">
+                        <div class="frame-child5"></div>
+                        <div class="frame-child6"></div>
+                    </div>
+                    <div class="rectangle-parent2">
+                        <div class="frame-child7"></div>
+                        <div class="frame-child8"></div>
+                    </div>
+                    <div class="rectangle-parent2">
+                        <div class="frame-child"></div>
+                        <div class="frame-item"></div>
+                    </div>
+                    <div class="rectangle-parent2">
+                        <div class="frame-child1"></div>
+                        <div class="frame-child12"></div>
+                    </div>
+                    <div class="rectangle-parent2">
+                        <div class="frame-child1"></div>
+                        <div class="frame-child4"></div>
+                    </div>
+                    <div class="rectangle-parent2">
+                        <div class="frame-child3"></div>
+                        <div class="frame-child4"></div>
+                    </div>
+                </div>
+                <div class="amount">
+                    <div class="jan">60,000</div>
+                    <div class="jan">50,000</div>
+                    <div class="jan">40,000</div>
+                    <div class="jan">30,000</div>
+                    <div class="jan">20,000</div>
+                    <div class="jan">10,000</div>
+                </div>
+                <div class="month1">
+                    <div class="jun">Jan</div>
+                    <div class="feb1">Feb</div>
+                    <div class="feb1">Mar</div>
+                    <div class="apr1">Apr</div>
+                    <div class="may1">May</div>
+                    <div class="jun">Jun</div>
+                    <div class="jul">Jul</div>
+                    <div class="aug">Aug</div>
+                    <div class="may1">May</div>
+                    <div class="jun">Jun</div>
+                </div>
+                <div class="purchase2">Purchase</div>
+                <div class="sales2">Sales</div>
+                <div class="sales-purchase-child"></div>
+                <div class="sales-purchase-item"></div>
+                <div class="button">
+                    <img class="calendar-icon" alt="" src="Calendar.svg">
+                    <div class="text8">Weekly</div>
+                </div>
+            </div>
+            <div class="data">
+                <div class="vertical">
+                    <div class="lines1">
+                        <div class="lines-child3"></div>
+                        <div class="lines-child4"></div>
+                        <div class="lines-child5"></div>
+                        <div class="lines-child6"></div>
+                        <div class="lines-child7"></div>
+                        <div class="lines-child8"></div>
+                    </div>
+                </div>
+                <img class="lines-icon" alt="" src="Lines.svg">
+            </div>
+            <div class="dashboard-item"></div>
+            <div class="dashboard-inner"></div>
+            <div class="ordered">Ordered</div>
+            <div class="delivered">Delivered</div>
+            <div class="dashboard-inner1">
+                <div class="frame-child17"></div>
+            </div>
+            <div class="low-quantity-stock">Low Quantity  Stock</div>
+            <div class="rectangle-parent8">
+                <img class="rectangle-icon" alt="" src="Rectangle 72.png">
+                <div class="lays-parent">
+                    <div class="div">Lays</div>
+                    <div class="remaining-quantity">Remaining Quantity : 15 Packet</div>
+                </div>
+                <div class="badge">
+                    <div class="badge1">
+                        <div class="text9">Low</div>
+                    </div>
+                </div>
+            </div>
+            <div class="rectangle-parent9">
+                <img class="rectangle-icon" alt="" src="Rectangle 78.png">
+                <div class="lays-parent">
+                    <div class="div">Lays</div>
+                    <div class="remaining-quantity">Remaining Quantity : 15 Packet</div>
+                </div>
+                <div class="badge">
+                    <div class="badge1">
+                        <div class="text9">Low</div>
+                    </div>
+                </div>
+            </div>
+            <div class="rectangle-parent10">
+                <img class="rectangle-icon" alt="" src="Rectangle 71.png">
+                <div class="lays-parent">
+                    <div class="div">Tata Salt</div>
+                    <div class="remaining-quantity">Remaining Quantity : 10 Packet</div>
+                </div>
+                <div class="badge">
+                    <div class="badge1">
+                        <div class="text9">Low</div>
+                    </div>
+                </div>
+            </div>
+            <div class="see-all">See All</div>
+            <div class="top-selling-stock">
+                <div class="inventory-summary">Top Selling Stock</div>
+                <div class="name">Name</div>
+                <div class="sold-quantity">Sold Quantity</div>
+                <div class="price">Price</div>
+                <div class="remaining-quantity3">Remaining Quantity</div>
+                <div class="surf-excel">Surf Excel</div>
+                <div class="rin">Rin</div>
+                <div class="parle-g">Parle G</div>
+                <div class="div23">30</div>
+                <div class="div24">21</div>
+                <div class="div25">19</div>
+                <div class="div26">12</div>
+                <div class="div27">15</div>
+                <div class="div28">17</div>
+                <div class="div29">₹ 100</div>
+                <div class="div30">₹ 207</div>
+                <div class="div31">₹ 105</div>
+                <div class="see-all1">See All</div>
+                <img class="top-selling-stock-child" alt="" src="Vector 41.svg">
+                <img class="top-selling-stock-item" alt="" src="Vector 42.svg">
+                <img class="top-selling-stock-inner" alt="" src="Vector 43.svg">
+                <img class="top-selling-stock-child1" alt="" src="Vector 44.svg">
+            </div>
+        </div>
+    </div>
+</body>
+</html>

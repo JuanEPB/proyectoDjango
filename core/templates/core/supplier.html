@@ -1,0 +1,224 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  	<meta charset="utf-8">
+  	<meta name="viewport" content="initial-scale=1, width=device-width">
+  	
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
+  	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+
+    <style>
+        .dashboard {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .side-bar {
+            width: 250px;
+            background-color: #f4f4f4;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        .content-area {
+            flex-grow: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: row;
+            gap: 40px;
+            align-items: flex-start;
+        }
+
+        .form-container form {
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .center-table-container {
+            width: 100%;
+            max-width: 700px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: #fff;
+        }
+
+        th, td {
+            padding: 10px 15px;
+            border: 2px solid #11076e;
+            text-align: left;
+        }
+
+        th {
+            background-color: #3e47a7b6;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+
+        .btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+
+        h1 {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>  
+<div class="dashboard">
+    <div class="side-bar">
+        <div class="top-parent">
+            <div class="top">
+                <div class="logo">
+                    <div class="pharmacontrol">Pharmacontrol</div>
+                </div>
+            </div>                         
+            <div class="list-menu">
+                <div class="list-menu1">
+                    <div class="list-menu2">
+                        <div class="content">
+                            <i class="bi bi-house"></i>
+                            <div class="text">
+                                <a href="{% url 'medicamentos'%}"> Dashobard</a>
+                            </div>
+                        </div>
+                    </div>                       
+                    <div class="list-menu3">
+                        <div class="content">
+                            <i class="bi bi-box"></i>
+                                <a href="{% url 'inventory'%}"> Inventario</a>
+                        </div>
+                    </div>
+                    <div class="list-menu3">
+                        <div class="content">
+                            <i class="bi bi-files"></i>
+                                <a href="{% url 'reports'%}"> Reportes</a>
+                        </div>
+                    </div>
+                    <div class="list-menu3">
+                        <div class="content">
+                            <i class="bi bi-people"></i>
+                            <a href="{% url 'users'%}"> Usuarios</a>
+                        </div>
+                    </div>
+                    <div class="list-menu3">
+                        <div class="content">
+                            <i class="bi bi-truck"></i>
+                            <a href="{% url 'orders'%}"> Pedidos</a>
+                        </div>
+                    </div>
+                    <div class="list-menu3">
+                        <div class="content">
+                            <i class="bi bi-cart-check"></i>
+                            <a href="{% url 'suppliers'%}"> Proveedores</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content">
+                <i class="bi bi-gear"></i>
+                <p><a href="{% url 'settings'%}"> Configuración</a></p>
+            </div>
+
+            <div class="list-menu3">
+                <div class="content">
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <div class="text">
+                            <button type="submit"> <i class="bi bi-door-open"></i>Cerrar sesión</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="content-area">
+        <div class="form-container">
+        <!-- <h1>{% if proveedor %}Editar{% else %}Agregar{% endif %} Proveedor</h1>-->
+         
+
+            {% if error %}
+                <p class="error">{{ error }}</p>
+            {% endif %}
+
+            <form method="POST">
+            
+    {% csrf_token %}
+
+    <!--
+    <label for="nombre">Nombre:</label>
+    <input type="text" name="nombre" id="nombre" value="{{ proveedor.nombre|default_if_none:'' }}">
+
+    <label for="contacto">Contacto:</label>
+    <input type="text" name="contacto" id="contacto" value="{{ proveedor.contacto|default_if_none:'' }}">
+
+    <label for="direccion">Dirección:</label>
+    <input type="text" name="direccion" id="direccion" value="{{ proveedor.direccion|default_if_none:'' }}">
+
+    <button type="submit" class="btn">{% if proveedor %}Guardar Cambios{% else %}Agregar{% endif %}</button>
+            -->
+</form> 
+
+        </div>
+
+
+        <div class="center-table-container">
+            <h2>Lista de Proveedores</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Contacto</th>
+                        <th>Direccion</th>
+                        <th>ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for proveedor in proveedores %}
+                    <tr>
+                        <td>{{ proveedor.nombre }}</td>
+                        <td>{{ proveedor.contacto }}</td>
+                        <td>{{ proveedor.direccion }}</td>
+                        <td>{{ proveedor.id }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">No hay proveedores disponibles.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
