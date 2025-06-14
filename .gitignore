@@ -1,0 +1,10 @@
+# Ignorar carpetas de archivos compilados de Python
+__pycache__/
+*.py[cod]
+
+# Ignorar base de datos SQLite local
+db.sqlite3
+
+# Ignorar archivos de log y temporales
+*.log
+*.sqlite3-journal
