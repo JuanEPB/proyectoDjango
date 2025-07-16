@@ -33,6 +33,36 @@
             background-color: #fff;
         }
     </style>
+        <style>
+        /* Botón flotante */
+        #chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* Ventana del chatbot */
+        #chatbot-frame {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            border: none;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+    </style>
 </head>
 <body>
 
@@ -93,10 +123,21 @@
     <h2>Gráfica de Stock por Medicamento</h2>
     <canvas id="graficaStock" width="600" height="300"></canvas>
 
+     <button id="chatbot-toggle">💬</button>
+
+    <!-- Iframe del chatbot -->
+    <iframe id="chatbot-frame" src="http://127.0.0.1:8000"></iframe>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+   const toggleBtn = document.getElementById('chatbot-toggle');
+        const chatbotFrame = document.getElementById('chatbot-frame');
+
+        toggleBtn.addEventListener('click', () => {
+            chatbotFrame.style.display = chatbotFrame.style.display === 'none' ? 'block' : 'none';
+        });
 const ctx = document.getElementById('graficaStock').getContext('2d');
 const grafica = new Chart(ctx, {
     type: 'bar',
