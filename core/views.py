@@ -1,475 +1,589 @@
+# views.py
+import json
+from datetime import datetime, date
+from collections import Counter
 import requests
+from django.http import JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect
-from django.core.paginator import Paginator
-from datetime import datetime
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
-def lista_medicamentos(request):
+# =========================
+# Config
+# =========================
+NEST_BASE = "http://127.0.0.1:3000"  # API NestJS
+API = {
+    "meds_all": f"{NEST_BASE}/api/medicamentos/all",
+    "meds_count": f"{NEST_BASE}/api/medicamentos/count",
+    "meds_get": f"{NEST_BASE}/api/medicamentos",  # /:id
+    "meds_create": f"{NEST_BASE}/api/medicamentos/create",
+    "meds_update": f"{NEST_BASE}/api/medicamentos/update",  # /:id
+    "meds_delete": f"{NEST_BASE}/api/medicamentos/delete",  # /:id
+    "users_all": f"{NEST_BASE}/api/users/all",
+    "users_get": f"{NEST_BASE}/api/users",  # /:id
+    "users_create": f"{NEST_BASE}/api/users/create",
+    "users_update": f"{NEST_BASE}/api/users/update",  # /:id
+    "users_delete": f"{NEST_BASE}/api/users/delete",  # /:id
+    "prov_all": f"{NEST_BASE}/api/proveedores/all",
+    "prov_create": f"{NEST_BASE}/api/proveedores/create",
+    "prov_update": f"{NEST_BASE}/api/proveedores/update",  # /:id
+    "prov_delete": f"{NEST_BASE}/api/proveedores/delete",  # /:id
+    "venta": f"{NEST_BASE}/api/venta",
+    "cats_all": f"{NEST_BASE}/api/categorias/all",
+}
+
+# =========================
+# Helpers
+# =========================
+def _auth_headers(request):
     token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
+    headers = {"Accept": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
+def _get(request, url):
     try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all", headers=headers)
-        if response.status_code == 200:
-            medicamentos = response.json()
-        else:
-            medicamentos = []
+        r = requests.get(url, headers=_auth_headers(request), timeout=10)
+        if r.status_code == 401:
+            return "unauthorized", []
+        if r.ok:
+            ctype = r.headers.get("content-type", "")
+            return None, (r.json() if ctype.startswith("application/json") else [])
     except requests.RequestException:
-        medicamentos = []
+        pass
+    return None, []
 
-    return render(request, 'core/medicamentos.html', {'medicamentos': medicamentos})
+def _post(request, url, payload):
+    try:
+        r = requests.post(url, json=payload, headers=_auth_headers(request), timeout=10)
+        if r.status_code == 401:
+            return "unauthorized", None
+        return None, r
+    except requests.RequestException:
+        return None, None
 
-# vista de login
-def login_view(request):
-    if request.method == "POST":
-        email = request.POST.get("email")
-        contraseña = request.POST.get("contraseña")
+def _put(request, url, payload):
+    try:
+        r = requests.put(url, json=payload, headers=_auth_headers(request), timeout=10)
+        if r.status_code == 401:
+            return "unauthorized", None
+        return None, r
+    except requests.RequestException:
+        return None, None
 
+def _delete(request, url):
+    try:
+        r = requests.delete(url, headers=_auth_headers(request), timeout=10)
+        if r.status_code == 401:
+            return "unauthorized", None
+        return None, r
+    except requests.RequestException:
+        return None, None
+
+def _parse_date(s):
+    if not s:
+        return None
+    try:
+        # ISO YYYY-MM-DD
+        return datetime.fromisoformat(s).date()
+    except Exception:
         try:
-            response = requests.post("http://localhost:3000/api/auth/login", json={
-                "email": email,
-                "contraseña": contraseña
-            })
+            dd, mm, yyyy = s.split("/")
+            return date(int(yyyy), int(mm), int(dd))
+        except Exception:
+            return None
 
-            if response.status_code == 201:
-                token = response.json().get("access_token")
-                request.session["jwt"] = token
-                return redirect("medicamentos")
-            else:
-                return render(request, "core/login.html", {"error": "Credenciales incorrectas."})
-        
-        except requests.RequestException:
-            return render(request, "core/login.html", {"error": "Error al conectar con la API."})
+# =========================
+# Bridge (JS -> Django session)
+# =========================
+@require_POST
+@csrf_exempt
+def bridge_store_token(request):
+    """
+    El JS guarda el accessToken en localStorage y nos lo manda aquí
+    para que Django lo tenga en sesión y pueda consumir la API.
+    """
+    try:
+        data = json.loads(request.body or "{}")
+        token = data.get("accessToken")
+        if not token:
+            return HttpResponseBadRequest("no token")
+        request.session["jwt"] = token
+        request.session.modified = True
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=400)
 
+@require_POST
+@csrf_exempt
+def bridge_clear_token(request):
+    request.session.pop("jwt", None)
+    return JsonResponse({"ok": True})
+
+# =========================
+# Login / Logout (UI)
+# =========================
+def login_view(request):
+    # El login real lo hace el JS (auth.js) contra Nest.
     return render(request, "core/login.html")
 
 def logout_view(request):
     request.session.flush()
     return redirect("login")
 
+# =========================
+# Dashboard / Medicamentos
+# =========================
 
-  
 
-# vista de inventario
-def inventory_view(request):
-    token = request.session.get("jwt")
-    if not token:
+def medicamentos_view(request):
+    err, meds = _get(request, API["meds_all"])
+    if err == "unauthorized":
         return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all", headers=headers)
-        if response.status_code == 200:
-            inventory = response.json()
-        else:
-            inventory = []
-    except requests.RequestException:
-        inventory = []
-
-    return render(request, 'core/inventory.html', {'inventory': inventory})
-
-# vista de reportes
-def report_view(request):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all", headers=headers)
-        if response.status_code == 200:
-            reports = response.json()
-        else:
-            reports = []
-    except requests.RequestException:
-        reports = []
-
-    return render(request, 'core/reports.html', {'reports': reports})
-
-# vista de users
-def user_view(request):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all", headers=headers)
-        if response.status_code == 200:
-            users = response.json()
-        else:
-            users = []
-    except requests.RequestException:
-        users = []
-
-    return render(request, 'core/users.html', {'users': users})
-
-# vista de pedidos
-def order_view(request):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all", headers=headers)
-        if response.status_code == 200:
-            orders = response.json()
-        else:
-            orders = []
-    except requests.RequestException:
-        orders = []
-
-    return render(request, 'core/orders.html', {'orders': orders})
-
-# vista de proveedores
-def supplier_view(request):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all", headers=headers)
-        if response.status_code == 200:
-            supplier = response.json()
-        else:
-            supplier = []
-    except requests.RequestException:
-        supplier = []
-
-    return render(request, 'core/supplier.html', {'supplier': supplier})
-
-# vista de configuracion
-def settings_view(request):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all", headers=headers)
-        if response.status_code == 200:
-            settings = response.json()
-        else:
-            settings = []
-    except requests.RequestException:
-        settings = []
-
-    return render(request, 'core/settings.html', {'settings': settings})
-
-
-
-def create_medicamento_view(request):
-    proveedores = []
-    error = None
-
-
-    try:
-        response = requests.get("http://localhost:3000/api/proveedores/all")
-        if response.status_code == 200:
-            proveedores = response.json()
-    except requests.RequestException:
-        error = "No se pudieron obtener los proveedores."
-
-    if request.method == "POST":
-        nombre = request.POST.get("nombre")
-        lote = request.POST.get("lote")
-        caducidad = request.POST.get("caducidad")
-        stock = request.POST.get("stock")
-        precio = request.POST.get("precio")
-        proveedor_id = request.POST.get("proveedor_id")
-        categoria_id = request.POST.get("categoria_id")
-
-        data = {
-            "nombre": nombre,
-            "lote": lote,
-            "caducidad": caducidad,
-            "stock": int(stock),
-            "precio": float(precio),
-            "proveedor": {"id": int(proveedor_id)},
-            "categoria": {"id": int(categoria_id)}
-        }
-
-        try:
-            response = requests.post("http://localhost:3000/api/medicamentos/create", json=data)
-            if response.status_code == 201:
-                return redirect("create_medicamento")
-            else:
-                error = "Error al crear el medicamento."
-        except requests.RequestException:
-            error = "No se pudo conectar con la API."
-
-    return render(request, "core/inventory.html", {
-        "proveedores": proveedores,
-        "error": error
-    })
-
-
-
-
-
-def eliminar_medicamento_view(request, medicamento_id):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    if request.method == "POST":
-        headers = {
-            "Authorization": f"Bearer {token}"
-        }
-
-        try:
-            response = requests.delete(f"http://localhost:3000/api/medicamentos/delete/{medicamento_id}", headers=headers)
-            
-            if response.status_code == 204:
-                return redirect("inventory")  # Redirige a la vista de inventario
-            else:
-                # Si falla, renderiza la misma página con error
-                return render(request, "core/inventory.html", {"error": "Error al eliminar el medicamento."})
-        except requests.RequestException:
-            return render(request, "core/inventory.html", {"error": "Error al conectar con la API."})
-
-    # Si no es POST, redirige al inventario
-    return redirect("core/inventory")
-
-
-
-
-
-# vista de crear medicamento
-def create_medicamento_view(request):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    try:
-        response = requests.get(f"http://localhost:3000/api/medicamentos/{medicamento.id}", headers=headers)
-        if response.status_code == 200:
-            medicamento = response.json()
-            return render(request, "core/detalle_medicamento.html", {"medicamento": medicamento})
-        else:
-            return redirect("core/inventory")  # redirección ajustada a tu ruta principal
-    except requests.RequestException:
-        return redirect("core/inventory")
-
-
-# vista de crear medicamento
-def create_medicamento_view(request):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }   
-    if request.method == "POST":
-        nombre = request.POST.get("nombre")
-        descripcion = request.POST.get("descripcion")
-        precio = request.POST.get("precio")
-        cantidad = request.POST.get("cantidad")
-
-        try:
-            
-            response = requests.post("http://localhost:3000/api/medicamentos/create", json={
-                "nombre": nombre,
-                "descripcion": descripcion,
-                "precio": precio,
-                "cantidad": cantidad
-            }, headers=headers)
-
-            if response.status_code == 201:
-                return redirect("medicamentos")
-            else:
-                return render(request, "core/create_medicamento.html", {"error": "Error al crear el medicamento."})
-        
-        except requests.RequestException:
-            return render(request, "core/create_medicamento.html", {"error": "Error al conectar con la API."})
-        
-
-def navbar(request):
-    return render(request, 'core/asda.html')
-
-def detalle_medicamento_view(request, medicamento_id):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    try:
-        response = requests.get(f"http://localhost:3000/api/medicamentos/{medicamento_id}", headers=headers)
-        if response.status_code == 200:
-            medicamento = response.json()
-            return render(request, "core/detalle_medicamento.html", {"medicamento": medicamento})
-        else:
-            return redirect("core/inventory")  # redirección ajustada a tu ruta principal
-    except requests.RequestException:
-        return redirect("core/inventory")
-
-
-def inventory_view(request):
-
-    total_medicamentos = None
-    try:
-        count_response = requests.get("http://localhost:3000/api/medicamentos/count")
-        print("Status code de count:", count_response.status_code)
-        print("Texto de respuesta:", count_response.text)
-
-        if count_response.status_code == 200:
-            data = count_response.json()
-            # Buscar el primer valor numérico del JSON
-            for value in data.values():
-                if isinstance(value, int):
-                    total_medicamentos = value
-                    break
-            if total_medicamentos is None:
-                print("No se encontró valor numérico en la respuesta del count")
-        else:
-            total_medicamentos = 0
-    except requests.RequestException as e:
-        print("Error al consultar count:", e)
-        total_medicamentos = 0
-
-    # Obtener lista de medicamentos
-    try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all")
-        if response.status_code == 200:
-            inventory = response.json()
-        else:
-            inventory = []
-    except requests.RequestException:
-        inventory = []
-
-    # Paginación
-    page = request.GET.get('page', 1)
-    try:
-        page = int(page)
-        if page < 1:
-            page = 1
-    except ValueError:
-        page = 1
-
-    items_per_page = 3
-    total_items = len(inventory)
-    total_pages = (total_items + items_per_page - 1) // items_per_page
-    start = (page - 1) * items_per_page
-    end = start + items_per_page
-    paginated_inventory = inventory[start:end]
-
-    context = {
-        'inventory': paginated_inventory,
-        'page': page,
-        'total_pages': total_pages,
-        'total_medicamentos': total_medicamentos,
-    }
-
-    return render(request, 'core/inventory.html', context)
-
-
-    
-    if request.method == "POST":
-        nombre = request.POST.get("nombre")
-        descripcion = request.POST.get("descripcion")
-        precio = request.POST.get("precio")
-        cantidad = request.POST.get("cantidad")
-
-        try:
-            
-            response = requests.post("http://localhost:3000/api/medicamentos/create", json={
-                "nombre": nombre,
-                "descripcion": descripcion,
-                "precio": precio,
-                "cantidad": cantidad
-            }, headers=headers)
-
-            if response.status_code == 201:
-                return redirect("medicamentos")
-            else:
-                return render(request, "core/create_medicamento.html", {"error": "Error al crear el medicamento."})
-        
-        except requests.RequestException:
-            return render(request, "core/create_medicamento.html", {"error": "Error al conectar con la API."})
-
-
-def navbar(request):
-    return render(request, 'core/asda.html')
-
-def lista_medicamentos(request):
-    token = request.session.get("jwt")
-    if not token:
-        return redirect("login")
-
-    headers = {"Authorization": f"Bearer {token}"}
-    medicamentos = []
-
-    try:
-        response = requests.get("http://localhost:3000/api/medicamentos/all", headers=headers)
-        if response.status_code == 200:
-            medicamentos = response.json()
-    except requests.RequestException:
-        pass
-
-    # Resumen de TODOS los medicamentos
-    total_medicamentos = len(medicamentos)
-    stock_critico = sum(1 for m in medicamentos if m.get("stock", 0) < 10)
-
+    meds = meds if isinstance(meds, list) else []
+
+    # KPIs
+    total = len(meds)
+    criticos = sum(1 for m in meds if (m.get("stock") or 0) < 10)
+    hoy = date.today()
     caducados = 0
-    fecha_hoy = datetime.now().date()
-    for med in medicamentos:
-        try:
-            fecha_caducidad = datetime.strptime(med.get("caducidad", ""), "%Y-%m-%d").date()
-            if fecha_caducidad < fecha_hoy:
-                caducados += 1
-        except ValueError:
-            continue
+    for m in meds:
+        d = _parse_date(m.get("caducidad"))
+        if d and d < hoy:
+            caducados += 1
 
-    # Ordenar por createdAt si existe, sino por id o sin orden
-    try:
-        medicamentos_ordenados = sorted(medicamentos, key=lambda x: x.get('createdAt', ''), reverse=True)
-    except KeyError:
-        medicamentos_ordenados = medicamentos
+    resumen = {"disponibles": max(0, total - criticos - caducados),
+               "criticos": criticos, "caducados": caducados}
 
-    ultimos_10 = medicamentos_ordenados[:10]
+    # Top stock
+    top = sorted(meds, key=lambda m: m.get("stock") or 0, reverse=True)[:15]
+    stockTop = {"labels": [m.get("nombre") or "" for m in top],
+                "values": [m.get("stock") or 0 for m in top]}
 
-    # Datos para gráfica → SOLO los últimos 10 medicamentos
-    nombres = [m.get("nombre", "") for m in ultimos_10]
-    cantidades = [m.get("stock", 0) for m in ultimos_10]
+    # Categorías
+    def cat_name(m):
+        c = m.get("categoria")
+        return c.get("nombre") if isinstance(c, dict) else (c or "Sin categoría")
+    cnt = Counter(cat_name(m) for m in meds)
+    categorias = {"labels": list(cnt.keys()), "values": list(cnt.values())}
+
+    # Rotación dummy
+    rotacion = {"labels": categorias["labels"], "values": [v*6 for v in categorias["values"]]}
+
+    # Vencimientos
+    def within_days(s, days):
+        d = _parse_date(s); 
+        return bool(d and hoy <= d <= date.fromordinal(hoy.toordinal()+days))
+    vencimientos = {
+        "d30": sum(1 for m in meds if within_days(m.get("caducidad"), 30)),
+        "d60": sum(1 for m in meds if within_days(m.get("caducidad"), 60)),
+        "d90": sum(1 for m in meds if within_days(m.get("caducidad"), 90)),
+    }
+    meds_json = json.dumps(meds, ensure_ascii=False)  # listado completo para JS
+
+    chart_data_json = json.dumps({
+        "resumen": resumen,
+        "stockTop": stockTop,
+        "categorias": categorias,
+        "rotacion": rotacion,
+        "vencimientos": vencimientos,
+    }, ensure_ascii=False)
 
     contexto = {
-        "medicamentos": ultimos_10,
-        "total_medicamentos": total_medicamentos,
-        "stock_critico": stock_critico,
-        "caducados": caducados,
-        "nombres": nombres,
-        "cantidades": cantidades,
+        "meds_json": meds_json,
+        "chart_data_json": chart_data_json,
+     # <— NUEVO
     }
-    return render(request, 'core/medicamentos.html', contexto)
+    return render(request, "core/medicamentos.html", contexto)
+# =========================
+# Inventory (lista + paginación)
+# =========================
+def inventory_view(request):
+    # total
+    _, count_data = _get(request, API["meds_count"])
+    total_medicamentos = 0
+    if isinstance(count_data, dict):
+        for v in count_data.values():
+            if isinstance(v, int):
+                total_medicamentos = v
+                break
+
+    # lista
+    err, meds = _get(request, API["meds_all"])
+    if err == "unauthorized":
+        return redirect("login")
+    meds = meds if isinstance(meds, list) else meds.get("data", [])
+
+    paginator = Paginator(meds, 10)
+    page_number = request.GET.get("page", 1)
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    context = {
+        "inventory": page_obj.object_list,
+        "page_obj": page_obj,
+        "total_medicamentos": total_medicamentos,
+    }
+    return render(request, "core/inventory.html", context)
+
+# Crear medicamento
+def create_medicamento_view(request):
+    # proveedores para el form (si los necesitas)
+    _, proveedores = _get(request, API["prov_all"])
+
+    error = None
+    if request.method == "POST":
+        payload = {
+            "nombre": request.POST.get("nombre"),
+            "lote": request.POST.get("lote"),
+            "caducidad": request.POST.get("caducidad"),
+            "stock": int(request.POST.get("stock") or 0),
+            "precio": float(request.POST.get("precio") or 0),
+            "proveedor": {"id": int(request.POST.get("proveedor_id"))} if request.POST.get("proveedor_id") else None,
+            "categoria": {"id": int(request.POST.get("categoria_id"))} if request.POST.get("categoria_id") else None,
+        }
+        err, r = _post(request, API["meds_create"], payload)
+        if err == "unauthorized":
+            return redirect("login")
+        if r and r.status_code in (200, 201):
+            return redirect("inventory")
+        error = f"Error al crear medicamento: {r.status_code if r else 'sin respuesta'}"
+
+    return render(
+        request,
+        "core/inventory.html",
+        {"proveedores": proveedores if isinstance(proveedores, list) else [], "error": error},
+    )
+
+# Editar medicamento
+def edit_medicamento_view(request, medicamento_id):
+    if request.method == "POST":
+        payload = {
+            "nombre": request.POST.get("nombre"),
+            "lote": request.POST.get("lote"),
+            "caducidad": request.POST.get("caducidad"),
+            "stock": int(request.POST.get("stock") or 0),
+            "precio": float(request.POST.get("precio") or 0),
+            "proveedor": {"id": int(request.POST.get("proveedor_id"))} if request.POST.get("proveedor_id") else None,
+            "categoria": {"id": int(request.POST.get("categoria_id"))} if request.POST.get("categoria_id") else None,
+        }
+        err, r = _put(request, f"{API['meds_update']}/{medicamento_id}", payload)
+        if err == "unauthorized":
+            return redirect("login")
+        if r and r.status_code == 200:
+            return redirect("inventory")
+        return render(
+            request,
+            "core/edit_medicamento.html",
+            {"medicamento": payload, "error": f"Error al actualizar: {r.status_code if r else 'sin respuesta'}"},
+        )
+    else:
+        err, data = _get(request, f"{API['meds_get']}/{medicamento_id}")
+        if err == "unauthorized":
+            return redirect("login")
+        return render(request, "core/edit_medicamento.html", {"medicamento": data or {}})
+
+# Eliminar medicamento
+def eliminar_medicamento_view(request, medicamento_id):
+    if request.method == "POST":
+        err, r = _delete(request, f"{API['meds_delete']}/{medicamento_id}")
+        if err == "unauthorized":
+            return redirect("login")
+        if r and r.status_code in (200, 204):
+            return redirect("inventory")
+        return render(request, "core/inventory.html", {"error": "Error al eliminar el medicamento."})
+    return redirect("inventory")
+
+# Detalle medicamento
+def detalle_medicamento_view(request, medicamento_id):
+    err, data = _get(request, f"{API['meds_get']}/{medicamento_id}")
+    if err == "unauthorized":
+        return redirect("login")
+    if data:
+        return render(request, "core/detalle_medicamento.html", {"medicamento": data})
+    return redirect("inventory")
+
+# =========================
+# Reportes
+# =========================
+def report_view(request):
+    err, reports = _get(request, API["meds_all"])
+    if err == "unauthorized":
+        return redirect("login")
+    return render(request, "core/reports.html", {"reports": reports if isinstance(reports, list) else []})
+
+# =========================
+# Pedidos
+# =========================
+def order_view(request):
+    err, orders = _get(request, API["meds_all"])
+    if err == "unauthorized":
+        return redirect("login")
+    return render(request, "core/orders.html", {"orders": orders if isinstance(orders, list) else []})
+
+# =========================
+# Configuración
+# =========================
+def settings_view(request):
+    err, settings = _get(request, API["meds_all"])
+    if err == "unauthorized":
+        return redirect("login")
+    return render(request, "core/settings.html", {"settings": settings if isinstance(settings, list) else []})
+
+# =========================
+# Proveedores
+# =========================
+def supplier_view(request):
+    err, data = _get(request, API["prov_all"])
+    if err == "unauthorized":
+        return redirect("login")
+    proveedores_list = data if isinstance(data, list) else []
+
+    page = request.GET.get("page", 1)
+    paginator = Paginator(proveedores_list, 10)
+    try:
+        proveedores = paginator.page(page)
+    except PageNotAnInteger:
+        proveedores = paginator.page(1)
+    except EmptyPage:
+        proveedores = paginator.page(paginator.num_pages)
+
+    context = {"proveedores": proveedores, "page": proveedores.number, "total_pages": paginator.num_pages}
+    return render(request, "core/supplier.html", context)
+
+def add_supplier_view(request):
+    error = None
+    if request.method == "POST":
+        payload = {
+            "nombre": request.POST.get("nombre"),
+            "contacto": request.POST.get("contacto"),
+            "direccion": request.POST.get("direccion"),
+        }
+        err, r = _post(request, API["prov_create"], payload)
+        if err == "unauthorized":
+            return redirect("login")
+        if r and r.status_code in (200, 201):
+            return redirect("suppliers")
+        error = f"No se pudo agregar el proveedor: {r.status_code if r else 'sin respuesta'}"
+
+    # recargar lista
+    err, data = _get(request, API["prov_all"])
+    proveedores = data if isinstance(data, list) else []
+    return render(request, "core/supplier.html", {"proveedores": proveedores, "error": error})
+
+def edit_supplier_view(request, id):
+    if request.method == "POST":
+        payload = {
+            "nombre": request.POST.get("nombre"),
+            "contacto": request.POST.get("contacto"),
+            "direccion": request.POST.get("direccion"),
+        }
+        err, r = _put(request, f"{API['prov_update']}/{id}", payload)
+        if err == "unauthorized":
+            return redirect("login")
+        if r and r.status_code == 200:
+            return redirect("suppliers")
+    return redirect("suppliers")
+
+def delete_supplier_view(request, id):
+    err, _ = _delete(request, f"{API['prov_delete']}/{id}")
+    if err == "unauthorized":
+        return redirect("login")
+    return redirect("suppliers")
+
+#========================
+# Usuarios
+#========================
+# --- USUARIOS ---
+
+def user_view(request):
+    err, users = _get(request, API["users_all"])
+    if err == "unauthorized":
+        return redirect("login")
+    return render(request, "core/users.html", {"users": users if isinstance(users, list) else []})
+
+def add_user_view(request):
+    if request.method == "POST":
+        payload = {
+            "nombre": request.POST.get("nombre"),
+            "apellido": request.POST.get("apellido"),
+            "rol": request.POST.get("rol"),
+            "email": request.POST.get("email"),
+            "contraseña": request.POST.get("contraseña"),
+        }
+        err, r = _post(request, API["users_create"], payload)
+        if err == "unauthorized":
+            return redirect("login")
+        if r and r.status_code in (200, 201):
+            return redirect("users")
+        return render(request, "core/add_user.html", {"error": f"Error: {r.status_code if r else 'sin respuesta'}"})
+    return render(request, "core/add_user.html")
+
+def edit_user_view(request, user_id):
+    if request.method == "POST":
+        payload = {
+            "nombre": request.POST.get("nombre"),
+            "apellido": request.POST.get("apellido"),
+            "rol": request.POST.get("rol"),
+            "email": request.POST.get("email"),
+        }
+        err, r = _put(request, f"{API['users_update']}/{user_id}", payload)
+        if err == "unauthorized":
+            return redirect("login")
+        if r and r.status_code == 200:
+            return redirect("users")
+        return render(request, "core/edit_user.html", {"user": payload, "error": "No se pudo actualizar"})
+    else:
+        err, u = _get(request, f"{API['users_get']}/{user_id}")
+        if err == "unauthorized":
+            return redirect("login")
+        return render(request, "core/edit_user.html", {"user": u or {}})
+
+def delete_user_view(request, user_id):
+    err, r = _delete(request, f"{API['users_delete']}/{user_id}")
+    if err == "unauthorized":
+        return redirect("login")
+    return redirect("users")
+
+# =========================
+# Carrito / Ventas
+# =========================
+API_MEDICAMENTOS_URL = API["meds_all"]
+API_VENTA_URL = API["venta"]
+
+def obtener_medicamentos_con_token(request):
+    err, data = _get(request, API_MEDICAMENTOS_URL)
+    if err == "unauthorized":
+        return []
+    return data if isinstance(data, list) else []
+
+def carrito_view(request):
+    token = request.session.get("jwt")
+    if not token:
+        return redirect("login")
+
+    filtro = request.GET.get("stock")
+    medicamentos = obtener_medicamentos_con_token(request)
+
+    if filtro == "con":
+        medicamentos = [m for m in medicamentos if (m.get("stock") or 0) > 0]
+    elif filtro == "sin":
+        medicamentos = [m for m in medicamentos if (m.get("stock") or 0) <= 0]
+
+    paginator = Paginator(medicamentos, 10)
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
+
+    carrito = request.session.get("carrito", [])
+    total = sum(item["precio"] * item["cantidad"] for item in carrito)
+    compra_exitosa = request.session.pop("compra_exitosa", False)
+
+    return render(
+        request,
+        "core/carrito.html",
+        {
+            "medicamentos": page_obj,
+            "page_obj": page_obj,
+            "carrito": carrito,
+            "total_carrito": total,
+            "compra_exitosa": compra_exitosa,
+            "filtro": filtro,
+        },
+    )
+
+@csrf_exempt
+def agregar_al_carrito(request, medicamento_id):
+    if request.method == "POST":
+        token = request.session.get("jwt")
+        if not token:
+            return redirect("login")
+
+        cantidad = int(request.POST.get("cantidad", 1))
+
+        inventory = obtener_medicamentos_con_token(request)
+        medicamento = next((m for m in inventory if str(m.get("id")) == str(medicamento_id)), None)
+        if not medicamento:
+            return redirect("carrito")
+
+        precio = float(medicamento.get("precio") or 0.0)
+        carrito = request.session.get("carrito", [])
+        for item in carrito:
+            if str(item["id"]) == str(medicamento_id):
+                item["cantidad"] += cantidad
+                item["total"] = item["cantidad"] * precio
+                break
+        else:
+            carrito.append(
+                {
+                    "id": medicamento.get("id"),
+                    "nombre": medicamento.get("nombre"),
+                    "precio": precio,
+                    "cantidad": cantidad,
+                    "total": precio * cantidad,
+                }
+            )
+        request.session["carrito"] = carrito
+    return redirect("carrito")
+
+@csrf_exempt
+def quitar_del_carrito(request, medicamento_id):
+    if request.method == "POST":
+        carrito = request.session.get("carrito", [])
+        carrito = [item for item in carrito if str(item["id"]) != str(medicamento_id)]
+        request.session["carrito"] = carrito
+    return redirect("carrito")
+
+@csrf_exempt
+def realizar_compra(request):
+    if request.method == "POST":
+        token = request.session.get("jwt")
+        if not token:
+            return redirect("login")
+
+        carrito = request.session.get("carrito", [])
+        if not carrito:
+            return redirect("carrito")
+
+        total = sum(item["precio"] * item["cantidad"] for item in carrito)
+        detalles = [
+            {
+                "medicamentoId": item["id"],
+                "cantidad": item["cantidad"],
+                "precioUnitario": item["precio"],
+            }
+            for item in carrito
+        ]
+        payload = {"total": total, "detalles": detalles}
+
+        try:
+            r = requests.post(API_VENTA_URL, json=payload, headers=_auth_headers(request), timeout=12)
+            if r.status_code in (200, 201):
+                request.session["carrito"] = []
+                request.session["compra_exitosa"] = True
+                return redirect("carrito")
+            else:
+                error_msg = f"Error al realizar la compra: {r.status_code} - {r.text}"
+                return render(
+                    request,
+                    "core/carrito.html",
+                    {"carrito": carrito, "total_carrito": total, "error": error_msg},
+                )
+        except requests.RequestException as e:
+            return render(
+                request,
+                "core/carrito.html",
+                {"carrito": carrito, "total_carrito": total, "error": f"Error de conexión con la API: {e}"},
+            )
+    return redirect("carrito")
+
+# =========================
+# Vistas varias
+# =========================
+def navbar(request):
+    return render(request, "core/asda.html")

@@ -19,86 +19,65 @@
 </style>    
 </head>
     <body>
-         <div class="side-bar">
-            <div class="top-parent">
-                <div class="top">
-                    <div class="logo">
-                        <div class="pharmacontrol">Pharmacontrol</div>
-                    </div>
-                </div>
-                <div class="list-menu">
-                    <div class="list-menu1">
-                        <div class="list-menu2">
-                            <div class="content">
-                                <i class="bi bi-house"></i>
-                                <div class="text">
-                                    <a href="{% url 'medicamentos'%}"> Dashobard</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-box"></i>
-                                <div class="text">
-                                    <a href="{% url 'inventory'%}"> Inventario</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-files"></i>
-                                <div class="text">
-                                    <a href="{% url 'reports'%}"> Reportes</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-people"></i>
-                                <div class="text">
-                                    <a href="{% url 'users'%}"> Usuarios</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-truck"></i>
-                                <div class="text">
-                                    <a href="{% url 'orders'%}"> Pedidos</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-cart-check"></i>
-                                <div class="text">
-                                    <a href="{% url 'suppliers'%}"> Proveedores</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="list-menu-parent">
-                <div class="list-menu8">
+  <div class="side-bar">
+        <div>
+            <div class="logo">Pharmacontrol</div>
+            <div class="list-menu1">
+                <div class="list-menu2">
                     <div class="content">
-                        <i class="bi bi-gear"></i>
-                        <div class="text">
-                            <p><a href="{% url 'settings'%}"> Configuración</a></p>
-                        </div>
+                        <i class="bi bi-house"></i>
+                        <div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div>
                     </div>
                 </div>
-                <div class="list-menu8">
+                <div class="list-menu3">
                     <div class="content">
-                        <form method="post" action="{% url 'logout' %}">
-                            {% csrf_token %}
-                            <div class="text">
-                                <button type="submit"> <i class="bi bi-door-open"></i>Cerrar sesión</button>
-                            </div>
-                        </form>
+                        <i class="bi bi-box"></i>
+                        <div class="text"><a href="{% url 'inventory' %}">Inventario</a></div>
+                    </div>
+                </div>
+                <div class="list-menu3">
+                    <div class="content">
+                        <i class="bi bi-files"></i>
+                        <div class="text"><a href="{% url 'reports' %}">Reportes</a></div>
+                    </div>
+                </div>
+                <div class="list-menu3">
+                    <div class="content">
+                        <i class="bi bi-people"></i>
+                        <div class="text"><a href="{% url 'users' %}">Usuarios</a></div>
+                    </div>
+                </div>
+                <div class="list-menu3">
+                    <div class="content">
+                        <i class="bi bi-truck"></i>
+                        <div class="text"><a href="{% url 'orders' %}">Pedidos</a></div>
+                    </div>
+                </div>
+                <div class="list-menu3">
+                    <div class="content">
+                        <i class="bi bi-cart-check"></i>
+                        <div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="list-menu-parent">
+            <div class="list-menu8">
+                <div class="content">
+                    <i class="bi bi-gear"></i>
+                    <div class="text"><p><a href="{% url 'settings' %}">Configuración</a></p></div>
+                </div>
+            </div>
+            <div class="list-menu8">
+                <div class="content">
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit"><i class="bi bi-door-open"></i>Cerrar sesión</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
     </body>
 </html>

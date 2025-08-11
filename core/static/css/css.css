@@ -14,15 +14,17 @@
 
         /* Sidebar */
         .side-bar {
-            width: 260px;
-            background: #1e293b;
-            color: #f1f5f9;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 20px 0;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        }
+        width: 260px;
+        background: #1e293b;
+        color: #f1f5f9;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 20px 0;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        position: fixed;
+        inset: 0 auto 0 0;
+    }
 
         .logo {
             font-weight: 700;
@@ -102,23 +104,26 @@
         }
 
         .table-wrapper {
-            width: 100%;
-            max-height: 400px;   
-            overflow-y: auto;    /* Scroll vertical */
-            overflow-x: auto;    /* Scroll horizontal */
-            border: 1px solid #ccc; 
-            border-radius: 6px;
-        }
+    width: 100%;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-            border-radius: 8px;
-            overflow: hidden;
-            font-size: 11px;
-            min-width: 700px; /* Para que no se achique demasiado */
-        }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 13px;
+    min-width: 100%; /* Se adapta a su contenedor */
+    table-layout: auto; /* Ajuste de columnas automático */
+}
+
 
         th, td {
             padding: 8px 12px;
@@ -204,7 +209,7 @@
           top: 56px; /* justo debajo del h1 */
           left: 0;
           width: 100%;
-          height: 45	%;
+          height: 45%;
           pointer-events: none;
          
           border-radius: 3px;
@@ -358,5 +363,33 @@
   	color: #5d6679;
 }
 
+
+ #chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* Ventana del chatbot */
+        #chatbot-frame {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            border: none;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
 
 

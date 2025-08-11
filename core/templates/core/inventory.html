@@ -9,17 +9,53 @@
     <!-- Bootstrap Icons CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css" />
     
-    <!-- Tu CSS -->
-    <link rel="stylesheet" href="{% static 'css/css.css' %}" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-
-
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     
-    <style>
+    <!-- Tu CSS -->
+  <link rel="stylesheet" href="{% static 'css/pharmacontrol.css' %}">
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  
+    <style>
+        /* Botón flotante */
+        #chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* Ventana del chatbot */
+        #chatbot-frame {
+             position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 350px;
+    height: 500px;
+    border: none;
+    border-radius: 10px;
+    display: none;
+    z-index: 1000;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    overflow: auto;
+
+        }
+
+        #chatbot-frame::-webkit-scrollbar {
+    display: none;
+}
+#chatbot-frame {
+    -ms-overflow-style: none;  /* IE y Edge */
+    scrollbar-width: none;     /* Firefox */
+}
     </style>
 </head>
 <body>
@@ -66,6 +102,12 @@
                         <div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div>
                     </div>
                 </div>
+                <div class="list-menu3">
+                    <div class="content">
+                        <i class="bi bi-cart3"></i>
+                        <div class="text"><a href="{% url 'carrito' %}">Carrito</a></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -86,7 +128,7 @@
             </div>
         </div>
     </div>
-    
+
     <main class="main-content">
 
       <div class="box">
@@ -94,12 +136,10 @@
         <div class="rectangle"></div>
         <div class="cards-row">
           <div class="card total-meds">
-  <div class="title">Total Medicamentos</div>
-  <div class="value">{{ total_medicamentos }}</div>
-  <div class="sub">Últimos 7 días</div>
-</div>
-
-
+            <div class="title">Total Medicamentos</div>
+            <div class="value">{{ total_medicamentos }}</div>
+            <div class="sub">Últimos 7 días</div>
+          </div>
 
           <div class="card expiring-meds">
             <div class="title">Por Caducar</div>
@@ -138,125 +178,148 @@
       </div>
 
       {% if inventory %}
-      <!-- Botón para abrir el modal -->
-<button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#crearMedicamentoModal">
-  Crear Medicamento
-</button>
+      <!-- Botón pequeño y a la derecha -->
+      <div class="d-flex justify-content-end mb-3">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#crearMedicamentoModal">
+          <i class="bi bi-plus-circle"></i> Crear
+        </button>
+      </div>
 
-<!-- Modal -->
-<div class="modal fade" id="crearMedicamentoModal" tabindex="-1" aria-labelledby="crearMedicamentoModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="post" action="{% url 'create_medicamento' %}">
-        {% csrf_token %}
-        <div class="modal-header">
-          <h5 class="modal-title" id="crearMedicamentoModalLabel">Crear Medicamento</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      <!-- Modal Crear Medicamento -->
+      <div class="modal fade" id="crearMedicamentoModal" tabindex="-1" aria-labelledby="crearMedicamentoModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form method="post" action="{% url 'create_medicamento' %}">
+              {% csrf_token %}
+              <div class="modal-header">
+                <h5 class="modal-title" id="crearMedicamentoModalLabel">Crear Medicamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+
+              <div class="modal-body">
+                <input type="text" name="nombre" placeholder="Nombre del medicamento" class="form-control mb-2" required>
+                <input type="text" name="lote" placeholder="Lote" class="form-control mb-2" required>
+                <input type="date" name="caducidad" class="form-control mb-2" required>
+                <input type="number" name="stock" placeholder="Cantidad en stock" class="form-control mb-2" required>
+                <input type="number" step="0.01" name="precio" placeholder="Precio" class="form-control mb-2" required>
+                <input type="number" name="proveedor_id" placeholder="ID del proveedor" class="form-control mb-2" required>
+                <input type="number" name="categoria_id" placeholder="ID de la categoría" class="form-control mb-2" required>
+
+                {% if error %}
+                  <p class="text-danger">{{ error }}</p>
+                {% endif %}
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear Medicamento</button>
+              </div>
+            </form>
+          </div>
         </div>
+      </div>
 
-        <div class="modal-body">
-          <input type="text" name="nombre" placeholder="Nombre del medicamento" class="form-control mb-2" required>
-          <input type="text" name="lote" placeholder="Lote" class="form-control mb-2" required>
-          <input type="date" name="caducidad" class="form-control mb-2" required>
-          <input type="number" name="stock" placeholder="Cantidad en stock" class="form-control mb-2" required>
-          <input type="number" step="0.01" name="precio" placeholder="Precio" class="form-control mb-2" required>
-         <input type="number" name="proveedor_id" placeholder="ID del proveedor" class="form-control mb-2" required>
-
-          <input type="number" name="categoria_id" placeholder="ID de la categoría" class="form-control mb-2" required>
-
-          {% if error %}
-            <p class="text-danger">{{ error }}</p>
-          {% endif %}
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Crear Medicamento</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<div class="table-wrapper">
-    
-    <table>
-{% if error %}
-  <div class="alert alert-danger mt-3">{{ error }}</div>
-{% endif %}
-
-
-        <thead>
+      <div class="table-wrapper">
+        <table class="table table-striped">
+          <thead>
             <tr>
-                <th>Nombre</th>
-                <th>Lote</th>
-                <th>Caducidad</th>
-                <th>Stock</th>
-                <th>Precio</th>
-                <th>Proveedor</th>
-                <th>Categoria</th>
-				<th>Acciones</th>
+              <th>Nombre</th>
+              <th>Lote</th>
+              <th>Caducidad</th>
+              <th>Stock</th>
+              <th>Precio</th>
+              <th>Proveedor</th>
+              <th>Categoria</th>
+              <th>Acciones</th>
             </tr>
-        </thead>
-        <tbody>
+          </thead>
+          <tbody>
             {% for medicamento in inventory %}
             <tr>
-                <td>{{ medicamento.nombre }}</td>
-                <td>{{ medicamento.lote }}</td>
-                <td>{{ medicamento.caducidad }}</td>
-                <td>{{ medicamento.stock }}</td>
-                <td>${{ medicamento.precio|floatformat:2 }}</td>
-                <td>{{ medicamento.proveedor.nombre }}</td>
-                <td>{{medicamento.categoria.nombre}}</td>
-    	<td>
-  <form action="{% url 'eliminar_medicamento' medicamento.id %}" method="post" style="display:inline;">
-    {% csrf_token %}
-    <button type="submit" style="background:none; border:none; color:red;" title="Eliminar" onclick="return confirm('¿Seguro que quieres eliminar este medicamento?');">
-      <i class="bi bi-trash"></i>
-    </button>
-  </form>
-
-  <a href="{% url 'detalle_medicamento' medicamento.id %}" class="btn btn-info btn-sm" title="Ver detalles" style="margin-left: 5px;">
-    <i class="bi bi-eye"></i>
-  </a>
-
-</td>
-
-		</tr>
-		</td>
+              <td>{{ medicamento.nombre }}</td>
+              <td>{{ medicamento.lote }}</td>
+              <td>{{ medicamento.caducidad }}</td>
+              <td>{{ medicamento.stock }}</td>
+              <td>${{ medicamento.precio|floatformat:2 }}</td>
+              <td>{{ medicamento.proveedor.nombre }}</td>
+              <td>{{ medicamento.categoria.nombre }}</td>
+              <td>
+                <form action="{% url 'eliminar_medicamento' medicamento.id %}" method="post" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-link p-0 text-danger" title="Eliminar" onclick="return confirm('¿Seguro que quieres eliminar este medicamento?');">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+                <a href="{% url 'detalle_medicamento' medicamento.id %}" class="btn btn-info btn-sm ms-2" title="Ver detalles">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
             </tr>
-            {% endfor %}	
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="2" style="text-align: left;">
-                    {% if page > 1 %}
-                        <a href="?page={{ page|add:"-1" }}" class="btn">« Anterior</a>
-                    {% else %}
-                        <span class="btn disabled">« Anterior</span>
-                    {% endif %}
-                </td>
-                <td colspan="2" style="text-align: center;">
-                    Página {{ page }} de {{ total_pages }}
-                </td>
-                <td colspan="2" style="text-align: right;">
-                    {% if page < total_pages %}
-                        <a href="?page={{ page|add:"1" }}" class="btn">Siguiente »</a>
-                    {% else %}
-                        <span class="btn disabled">Siguiente »</span>
-                    {% endif %}
-                </td>
-            </tr>
-        </tfoot>
-    </table>
-</div>
-{% else %}
-<p>No hay medicamentos en el inventario.</p>
-{% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
+      <!-- Paginación -->
+      <nav aria-label="Page navigation" class="mt-3">
+        <ul class="pagination justify-content-center">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Anterior">
+                <span aria-hidden="true">&laquo;</span>
+              </a>
+            </li>
+          {% else %}
+            <li class="page-item disabled">
+              <a class="page-link" href="#" aria-label="Anterior">
+                <span aria-hidden="true">&laquo;</span>
+              </a>
+            </li>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+            {% else %}
+              <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Siguiente">
+                <span aria-hidden="true">&raquo;</span>
+              </a>
+            </li>
+          {% else %}
+            <li class="page-item disabled">
+              <a class="page-link" href="#" aria-label="Siguiente">
+                <span aria-hidden="true">&raquo;</span>
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+
+      {% else %}
+        <p>No hay medicamentos en el inventario.</p>
+      {% endif %}
 
     </main>
+    <button id="chatbot-toggle">💬</button>
+
+    <!-- Iframe del chatbot -->
+      <iframe id="chatbot-frame" src="http://127.0.0.1:8000" style="overflow: hidden;"></iframe>
 
 </div>
 
 </body>
+<script>
+  const toggleBtn = document.getElementById('chatbot-toggle');
+        const chatbotFrame = document.getElementById('chatbot-frame');
+
+        toggleBtn.addEventListener('click', () => {
+            chatbotFrame.style.display = chatbotFrame.style.display === 'none' ? 'block' : 'none';
+        });
+</script>
 </html>
