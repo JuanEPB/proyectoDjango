@@ -1,5 +1,5 @@
 // ====== CONFIG ======
-const BASE_URL = '{{API_URL}}'; // Nest
+const BASE_URL = 'http://18.191.169.4:3000'; // Nest
 const API = {
   login:   `${BASE_URL}/api/auth/login`,
   refresh: `${BASE_URL}/api/auth/refresh`,

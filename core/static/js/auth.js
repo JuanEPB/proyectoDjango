@@ -1,5 +1,5 @@
 // static/js/auth.js
-const BASE_URL = '{{ API_URL }}';  // Definido en el template por settings.API_URL
+const BASE_URL = 'http://18.191.169.4:3000';  // Definido en el template por settings.API_URL
 const BRIDGE = { store:'/bridge/store-token/', clear:'/bridge/clear-token/' };
 const TOKEN_KEY = 'pc_access_token_v1';
 let ACCESS_TOKEN=null, REFRESH_TIMER=null;

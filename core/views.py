@@ -22,7 +22,7 @@ from api_client import API_BASE_URL  # Asegúrate de que este archivo exista y t
 # =========================
 # Config
 # =========================
-NEST_BASE = API_BASE_URL
+NEST_BASE = "http://18.191.169.4:3000"
 
 API = {
     "meds_all":     f"{NEST_BASE}/api/medicamentos/all",
