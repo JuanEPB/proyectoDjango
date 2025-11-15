@@ -1,37 +1,77 @@
 # views.py
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from collections import Counter
 import requests
-from django.http import JsonResponse, HttpResponseBadRequest
+import unicodedata
+import urllib.parse
+
+from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+
+from django.conf import settings
+from api_client import API_BASE_URL  # Asegúrate de que este archivo exista y tenga la URL base correcta
+# Ajusta estos imports a tus modelos reales
 
 # =========================
 # Config
 # =========================
-NEST_BASE = "http://127.0.0.1:3000"  # API NestJS
+NEST_BASE = API_BASE_URL
+
 API = {
-    "meds_all": f"{NEST_BASE}/api/medicamentos/all",
-    "meds_count": f"{NEST_BASE}/api/medicamentos/count",
-    "meds_get": f"{NEST_BASE}/api/medicamentos",  # /:id
-    "meds_create": f"{NEST_BASE}/api/medicamentos/create",
-    "meds_update": f"{NEST_BASE}/api/medicamentos/update",  # /:id
-    "meds_delete": f"{NEST_BASE}/api/medicamentos/delete",  # /:id
-    "users_all": f"{NEST_BASE}/api/users/all",
-    "users_get": f"{NEST_BASE}/api/users",  # /:id
+    "meds_all":     f"{NEST_BASE}/api/medicamentos/all",
+    "meds_count":   f"{NEST_BASE}/api/medicamentos/count",
+    "meds_get":     f"{NEST_BASE}/api/medicamentos",  # /:id
+    "meds_create":  f"{NEST_BASE}/api/medicamentos/create",
+    "meds_update":  f"{NEST_BASE}/api/medicamentos/update",  # /:id
+    "meds_delete":  f"{NEST_BASE}/api/medicamentos/delete",  # /:id
+    "users_all":    f"{NEST_BASE}/api/users/all",
+    "users_get":    f"{NEST_BASE}/api/users",  # /:id
     "users_create": f"{NEST_BASE}/api/users/create",
     "users_update": f"{NEST_BASE}/api/users/update",  # /:id
     "users_delete": f"{NEST_BASE}/api/users/delete",  # /:id
-    "prov_all": f"{NEST_BASE}/api/proveedores/all",
-    "prov_create": f"{NEST_BASE}/api/proveedores/create",
-    "prov_update": f"{NEST_BASE}/api/proveedores/update",  # /:id
-    "prov_delete": f"{NEST_BASE}/api/proveedores/delete",  # /:id
-    "venta": f"{NEST_BASE}/api/venta",
-    "cats_all": f"{NEST_BASE}/api/categorias/all",
+    "prov_all":     f"{NEST_BASE}/api/proveedores/all",
+    "prov_create":  f"{NEST_BASE}/api/proveedores/create",
+    "prov_update":  f"{NEST_BASE}/api/proveedores/update",  # /:id
+    "prov_delete":  f"{NEST_BASE}/api/proveedores/delete",  # /:id
+    "venta":        f"{NEST_BASE}/api/venta",
+    "cats_all":     f"{NEST_BASE}/api/categorias/all",
+
+    # Pedidos
+    "orders_list":   f"{NEST_BASE}/api/pedidos",
+    "orders_detail": f"{NEST_BASE}/api/pedidos",  # /:id
+    "orders_create": f"{NEST_BASE}/api/pedidos",
+    "orders_patch":  f"{NEST_BASE}/api/pedidos",  # /:id
+
+    # Búsquedas (fallbacks incluidos)
+    "meds_search":    f"{NEST_BASE}/api/medicamentos/all",
+    "prov_search":    f"{NEST_BASE}/api/proveedores/all",
+    "orders_search":  f"{NEST_BASE}/api/pedidos",
+    "ventas_search":  f"{NEST_BASE}/api/ventas/search",
+    "ventas_all":     f"{NEST_BASE}/api/ventas",
 }
+
+# Documentos / Ventas (como constantes claras)
+DOCS_LIST        = f"{NEST_BASE}/api/documentos"              # ...?tipo=venta|IA (si lo usas)
+DOCS_FILE        = f"{NEST_BASE}/api/documentos"              # .../:id (si alguna vez es PDF directo)
+DOCS_DESCARGAR   = f"{NEST_BASE}/api/documentos/descargar"    # <-- ESTE devuelve JSON de ticket
+VENTAS_GET       = f"{NEST_BASE}/api/ventas"                  # .../:id
+
+
+API.update({
+    "meds_search": f"{NEST_BASE}/api/medicamentos/all",  # si existe en Nest
+    "meds_all":    API.get("meds_all") or f"{NEST_BASE}/api/medicamentos/all", # recomendado
+    "prov_search":   f"{NEST_BASE}/api/proveedores/all",
+    "orders_search": f"{NEST_BASE}/api/pedidos",
+    "ventas_search": f"{NEST_BASE}/api/ventas/search",
+    "ventas_all":    f"{NEST_BASE}/api/ventas",               # fallback
+})
 
 # =========================
 # Helpers
@@ -94,6 +134,19 @@ def _parse_date(s):
             return date(int(yyyy), int(mm), int(dd))
         except Exception:
             return None
+
+def _patch(request, url, payload):
+    try:
+        r = requests.patch(url, json=payload, headers=_auth_headers(request), timeout=10)
+        if r.status_code == 401:
+            return "unauthorized", None
+        return None, r
+    except requests.RequestException:
+        return None, None
+
+def _strip_accents(s: str) -> str:
+    return ''.join(c for c in unicodedata.normalize('NFD', s or '') if unicodedata.category(c) != 'Mn')
+
 
 # =========================
 # Bridge (JS -> Django session)
@@ -201,6 +254,7 @@ def medicamentos_view(request):
 # Inventory (lista + paginación)
 # =========================
 def inventory_view(request):
+    filtro = request.GET.get('filtro', '')
     # total
     _, count_data = _get(request, API["meds_count"])
     total_medicamentos = 0
@@ -215,6 +269,16 @@ def inventory_view(request):
     if err == "unauthorized":
         return redirect("login")
     meds = meds if isinstance(meds, list) else meds.get("data", [])
+
+    # FILTRO sobre la lista
+    if filtro == 'stock':
+        meds = [m for m in meds if (m.get("stock") or 0) > 0]
+    elif filtro == 'sin_stock':
+        meds = [m for m in meds if (m.get("stock") or 0) <= 0]
+    elif filtro == 'caducar':
+        hoy = date.today()
+        proximos = hoy + timedelta(days=90)
+        meds = [m for m in meds if m.get("caducidad") and hoy <= _parse_date(m.get("caducidad")) <= proximos]
 
     paginator = Paginator(meds, 10)
     page_number = request.GET.get("page", 1)
@@ -231,7 +295,6 @@ def inventory_view(request):
         "total_medicamentos": total_medicamentos,
     }
     return render(request, "core/inventory.html", context)
-
 # Crear medicamento
 def create_medicamento_view(request):
     # proveedores para el form (si los necesitas)
@@ -587,3 +650,437 @@ def realizar_compra(request):
 # =========================
 def navbar(request):
     return render(request, "core/asda.html")
+
+
+# =========================
+# Pedidos (UI)
+# =========================
+def orders_view(request):
+    """
+    Renderiza la página de Pedidos. La tabla se llena vía fetch
+    contra los endpoints JSON de abajo (proxy a Nest).
+    """
+    return render(request, "core/orders.html", {"orders": []})
+
+
+# =========================
+# Pedidos (JSON / proxy)
+# =========================
+def orders_list_json(request):
+    """GET -> lista de pedidos (proxy a Nest)."""
+    err, data = _get(request, API["orders_list"])
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    return JsonResponse(data if isinstance(data, list) else [], safe=False)
+
+
+def order_detail_json(request, order_id: int):
+    """GET -> detalle de pedido (proxy a Nest)."""
+    err, data = _get(request, f"{API['orders_detail']}/{order_id}")
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    return JsonResponse(data or {}, safe=False)
+
+
+@csrf_exempt
+def order_create_json(request):
+    """POST -> crear pedido (proxy a Nest). Espera payload:
+    {
+      "proveedorId": number,
+      "farmaciaId": number,
+      "items": [{ "medicamentoId": n, "cantidad": n, "precioUnitario": n }]
+    }"""
+    if request.method != "POST":
+        return JsonResponse({"error": "method not allowed"}, status=405)
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    if not payload.get("items"):
+        return JsonResponse({"error": "el pedido requiere items"}, status=400)
+
+    err, r = _post(request, API["orders_create"], payload)
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    if r and r.status_code in (200, 201):
+        return JsonResponse(r.json(), status=r.status_code, safe=False)
+    code = r.status_code if r else 502
+    return JsonResponse({"error": "no se pudo crear", "detail": r.text if r else ""}, status=code)
+
+
+@csrf_exempt
+def order_patch_status_json(request, order_id: int):
+    """PATCH -> cambiar estatus (proxy a Nest). Body: { "estatus": "RECIBIDO" }"""
+    if request.method != "PATCH" and request.method != "POST":
+        # permitimos POST por comodidad desde fetch si te es más fácil
+        return JsonResponse({"error": "method not allowed"}, status=405)
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    if payload.get("estatus") not in ("ENVIADO", "RECIBIDO", "CANCELADO"):
+        return JsonResponse({"error": "estatus inválido"}, status=400)
+
+    err, r = _patch(request, f"{API['orders_patch']}/{order_id}", payload)
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    if r and r.ok:
+        return JsonResponse(r.json(), status=r.status_code, safe=False)
+    code = r.status_code if r else 502
+    return JsonResponse({"error": "no se pudo actualizar", "detail": r.text if r else ""}, status=code)
+
+# --- Proveedores JSON (lista) ---
+def proveedores_all_json(request):
+    """GET -> lista de proveedores (proxy a Nest)."""
+    err, data = _get(request, API["prov_all"])  # ya lo tienes mapeado a Nest /api/proveedores/all
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    return JsonResponse(data if isinstance(data, list) else [], safe=False)
+
+
+# =========================
+# Catálogos usados por el modal
+# =========================
+def farmacias_json(request):
+    """GET -> lista de farmacias (proxy a Nest)."""
+    err, data = _get(request, API["farm_all"])
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    return JsonResponse(data if isinstance(data, list) else [], safe=False)
+
+
+def proveedor_medicamentos_json(request, prov_id: int):
+    """GET -> medicamentos de un proveedor (proxy a Nest)."""
+    err, data = _get(request, f"{API['prov_meds']}/{prov_id}/medicamentos")
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    return JsonResponse(data if isinstance(data, list) else [], safe=False)
+
+
+#=======================================
+#Buscador
+#=======================================
+def search_inventory(request):
+    
+    q = (request.GET.get('q') or '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+
+    q_norm = _strip_accents(q).lower()
+    results = []
+
+    # -------- helpers internos ----------
+    def _safe_list(data):
+        if isinstance(data, list): 
+            return data
+        if isinstance(data, dict) and 'items' in data and isinstance(data['items'], list):
+            return data['items']
+        if isinstance(data, dict) and 'data' in data and isinstance(data['data'], list):
+            return data['data']
+        return []
+
+    def _fetch(url_key, alt_url_key=None, limit=None, params=None):
+        url = API.get(url_key)
+        data = []
+        if url:
+            if params:
+                url = f"{url}?{urllib.parse.urlencode(params)}"
+            err, data = _get(request, url)
+            if err == "unauthorized":
+                return "unauthorized", []
+        if (not _safe_list(data)) and alt_url_key:
+            # fallback sin /search
+            alt = API.get(alt_url_key)
+            if alt:
+                err, data = _get(request, alt)
+                if err == "unauthorized":
+                    return "unauthorized", []
+        items = _safe_list(data)
+        return None, (items[:limit] if (limit and isinstance(items, list)) else items)
+
+    # ============ Medicamentos ============
+    err, meds = _fetch(
+        'meds_search', alt_url_key='meds_all', limit=120,
+        params={'q': q, 'limit': 12}
+    )
+    if err == "unauthorized":
+        return JsonResponse({'error': 'unauthorized'}, status=401)
+
+    # si vino de /all, filtra localmente con tolerancia a acentos
+    if API.get('meds_search') and meds and len(meds) <= 12:
+        meds_filtered = meds
+    else:
+        meds_filtered = [
+            m for m in meds
+            if (q_norm in _strip_accents((m.get('nombre') or '')).lower()) 
+            or (q in (m.get('lote') or '')) 
+            or (q_norm in _strip_accents(str(m.get('codigo') or '')).lower())
+        ][:6]
+
+    for m in meds_filtered[:6]:
+        categoria = m.get('categoria')
+        proveedor = m.get('proveedor')
+        results.append({
+            'type': 'Medicamento',
+            'label': m.get('nombre') or '—',
+            'sub': f"Lote: {m.get('lote') or '—'} · Cat: {(categoria.get('nombre') if isinstance(categoria, dict) else categoria) or '—'} · Prov: {(proveedor.get('nombre') if isinstance(proveedor, dict) else proveedor) or '—'}",
+            'extra': f"Stock: {m.get('stock', 0)}",
+            'url': f"/inventario/medicamentos/{m.get('id') or m.get('_id')}/detalle"
+        })
+
+    # ============ Proveedores ============
+    err, provs = _fetch(
+        'prov_search', alt_url_key='prov_all', limit=100,
+        params={'q': q, 'limit': 8}
+    )
+    if err == "unauthorized":
+        return JsonResponse({'error': 'unauthorized'}, status=401)
+
+    if API.get('prov_search') and provs and len(provs) <= 8:
+        provs_filtered = provs
+    else:
+        provs_filtered = [
+            p for p in provs
+            if (q_norm in _strip_accents((p.get('nombre') or '')).lower())
+               or (q_norm in _strip_accents((p.get('razonSocial') or '')).lower())
+               or (q_norm in _strip_accents((p.get('contacto') or '')).lower())
+        ][:4]
+
+    for p in provs_filtered[:4]:
+        results.append({
+            'type': 'Proveedor',
+            'label': p.get('nombre') or p.get('razonSocial') or '—',
+            'sub': f"Contacto: {p.get('contacto') or '—'}",
+            'extra': None,
+            'url': f"/inventario/proveedores/{p.get('id') or p.get('_id')}"
+        })
+
+    # ============ Pedidos ============
+    err, peds = _fetch(
+        'orders_search', alt_url_key='orders_list', limit=120,
+        params={'q': q, 'limit': 8}
+    )
+    if err == "unauthorized":
+        return JsonResponse({'error': 'unauthorized'}, status=401)
+
+    if API.get('orders_search') and peds and len(peds) <= 8:
+        peds_filtered = peds
+    else:
+        peds_filtered = [
+            pd for pd in peds
+            if (q_norm in _strip_accents((str(pd.get('folio') or '')).lower()))
+               or (q_norm in _strip_accents((str(pd.get('estado') or '')).lower()))
+               or (q_norm in _strip_accents(((pd.get('proveedor') or {}).get('nombre') if isinstance(pd.get('proveedor'), dict) else str(pd.get('proveedor') or '')).lower()))
+        ][:4]
+
+    for pd in peds_filtered[:4]:
+        prov = pd.get('proveedor')
+        prov_nombre = (prov.get('nombre') if isinstance(prov, dict) else prov) or '—'
+        total = pd.get('total')
+        results.append({
+            'type': 'Pedido',
+            'label': f"Folio {pd.get('folio') or '—'}",
+            'sub': f"Proveedor: {prov_nombre} · Estado: {pd.get('estado') or '—'}",
+            'extra': (f"${float(total):.2f}" if total is not None else None),
+            'url': f"/pedidos/{pd.get('id') or pd.get('_id')}"
+        })
+
+    # ============ Ventas ============
+    err, ventas = _fetch(
+        'ventas_search', alt_url_key='ventas_all', limit=120,
+        params={'q': q, 'limit': 8}
+    )
+    if err == "unauthorized":
+        return JsonResponse({'error': 'unauthorized'}, status=401)
+
+    if API.get('ventas_search') and ventas and len(ventas) <= 8:
+        ventas_filtered = ventas
+    else:
+        ventas_filtered = [
+            v for v in ventas
+            if (q_norm in _strip_accents((str(v.get('folio') or '')).lower()))
+               or (q_norm in _strip_accents((str(v.get('cliente') or '')).lower()))
+        ][:4]
+
+    for v in ventas_filtered[:4]:
+        fecha = v.get('fecha')
+        fecha_txt = (fecha[:10] if isinstance(fecha, str) and len(fecha) >= 10 else '—')
+        results.append({
+            'type': 'Venta',
+            'label': f"Folio {v.get('folio') or '—'}",
+            'sub': f"Cliente: {v.get('cliente') or '—'} · Fecha: {fecha_txt}",
+            'extra': f"${float(v.get('total', 0) or 0):.2f}",
+            'url': f"/ventas/{v.get('id') or v.get('_id')}"
+        })
+
+    # Prioridad: Medicamento > Proveedor > Pedido > Venta
+    order = {'Medicamento': 0, 'Proveedor': 1, 'Pedido': 2, 'Venta': 3}
+    results.sort(key=lambda r: order.get(r['type'], 9))
+
+    return JsonResponse({'results': results[:12]})
+
+    q = (request.GET.get('q') or '').strip()
+    results = []
+    if len(q) < 2:
+        return JsonResponse({'results': results})
+
+    # Medicamentos: nombre, lote, código
+    meds = (Medicamento.objects
+            .filter(Q(nombre__icontains=q) | Q(lote__icontains=q) | Q(codigo__icontains=q))
+            .select_related('categoria', 'proveedor')[:6])
+    for m in meds:
+        results.append({
+            'type': 'Medicamento',
+            'label': f'{m.nombre}',
+            'sub': f'Lote: {m.lote} · Cat: {getattr(m.categoria,"nombre","—")} · Prov: {getattr(m.proveedor,"nombre","—")}',
+            'extra': f'Stock: {m.stock}',
+            'url': f'/inventario/medicamentos/{m.id}/detalle'
+        })
+
+    # Proveedores: nombre, rfc, contacto
+    provs = (Proveedor.objects
+             .filter(Q(nombre__icontains=q) | Q(rfc__icontains=q) | Q(contacto__icontains=q))[:4])
+    for p in provs:
+        results.append({
+            'type': 'Proveedor',
+            'label': p.nombre,
+            'sub': f'RFC: {getattr(p,"rfc","—")} · Contacto: {getattr(p,"contacto","—")}',
+            'extra': None,
+            'url': f'/inventario/proveedores/{p.id}'
+        })
+
+    # Pedidos: folio, estado
+    peds = (Pedido.objects
+            .filter(Q(folio__icontains=q) | Q(estado__icontains=q) | Q(proveedor__nombre__icontains=q))
+            .select_related('proveedor')[:4])
+    for pd in peds:
+        results.append({
+            'type': 'Pedido',
+            'label': f'Folio {pd.folio}',
+            'sub': f'Proveedor: {getattr(pd.proveedor,"nombre","—")} · Estado: {pd.estado}',
+            'extra': getattr(pd, 'total', None) and f'${pd.total:.2f}',
+            'url': f'/pedidos/{pd.id}'
+        })
+
+    # Ventas: folio, paciente/cliente
+    vts = (Venta.objects
+           .filter(Q(folio__icontains=q) | Q(cliente__icontains=q))
+           .order_by('-fecha')[:4])
+    for v in vts:
+        results.append({
+            'type': 'Venta',
+            'label': f'Folio {v.folio}',
+            'sub': f'Cliente: {getattr(v,"cliente","—")} · Fecha: {v.fecha:%Y-%m-%d}',
+            'extra': f'${getattr(v,"total",0):.2f}',
+            'url': f'/ventas/{v.id}'
+        })
+
+    # Ordenar por prioridad sencilla (Medicamento > Proveedor > Pedido > Venta)
+    order = {'Medicamento':0,'Proveedor':1,'Pedido':2,'Venta':3}
+    results.sort(key=lambda r: order.get(r['type'], 9))
+
+    # Responder
+    return JsonResponse({'results': results[:12]})
+
+def search_meds(request):
+    # Requiere JWT en sesión para consultar Nest
+    if not request.session.get("jwt"):
+        # permitimos filtro local desde el front (devolvemos vacío → activa fallback JS)
+        return JsonResponse({"results": []}, status=401)
+
+    q = (request.GET.get('q') or '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+    q_norm = _strip_accents(q).lower()
+
+    # 1) Intenta /search en Nest con límite
+    url = API.get('meds_search')
+    if url:
+        err, data = _get(request, f"{url}?{urllib.parse.urlencode({'q': q, 'limit': 12})}")
+        if err != "unauthorized" and isinstance(data, (list, dict)):
+            items = data if isinstance(data, list) else data.get('items') or data.get('data') or []
+            results = []
+            for m in items[:12]:
+                cat = m.get('categoria')
+                prov = m.get('proveedor')
+                results.append({
+                    'type': 'Medicamento',
+                    'label': m.get('nombre') or '—',
+                    'sub': f"Lote: {m.get('lote') or '—'} · Cat: {(cat.get('nombre') if isinstance(cat, dict) else cat) or '—'} · Prov: {(prov.get('nombre') if isinstance(prov, dict) else prov) or '—'}",
+                    'extra': f"Stock: {m.get('stock', 0)}",
+                    'url': f"/inventario/detalle/{m.get('id') or m.get('_id')}/",
+                })
+            return JsonResponse({'results': results})
+
+    # 2) Fallback: /all y filtramos aquí
+    err, data = _get(request, API['meds_all'])
+    if err == "unauthorized":
+        return JsonResponse({'results': []}, status=401)
+
+    meds = data if isinstance(data, list) else data.get('data', [])
+    filtered = [
+        m for m in meds
+        if (q_norm in _strip_accents((m.get('nombre') or '')).lower())
+        or (q in (m.get('lote') or ''))
+        or (q_norm in _strip_accents(str(m.get('codigo') or '')).lower())
+    ][:12]
+
+    results = []
+    for m in filtered:
+        cat = m.get('categoria'); prov = m.get('proveedor')
+        results.append({
+            'type': 'Medicamento',
+            'label': m.get('nombre') or '—',
+            'sub': f"Lote: {m.get('lote') or '—'} · Cat: {(cat.get('nombre') if isinstance(cat, dict) else cat) or '—'} · Prov: {(prov.get('nombre') if isinstance(prov, dict) else prov) or '—'}",
+            'extra': f"Stock: {m.get('stock', 0)}",
+            'url': f"/inventario/detalle/{m.get('id') or m.get('_id')}/",
+        })
+    return JsonResponse({'results': results})
+
+
+
+
+#=====================================
+#Reportes PDF
+#=====================================
+
+# Lista por tipo (opcional si lo usas en la UI)
+def docs_by_tipo_json(request, tipo: str):
+    err, data = _get(request, f"{DOCS_LIST}?tipo={tipo}")
+    if err == "unauthorized":
+        return JsonResponse({"error":"unauthorized"}, status=401)
+    return JsonResponse(data if isinstance(data, list) else [], safe=False)
+
+# Descarga/stream directo (si alguna vez Nest devuelve PDF real en /api/documentos/:id)
+def doc_by_id_stream(request, doc_id: str):
+    try:
+        r = requests.get(f"{DOCS_FILE}/{doc_id}", headers=_auth_headers(request), timeout=20, stream=True)
+        if r.status_code == 401:
+            return JsonResponse({"error":"unauthorized"}, status=401)
+        ct = r.headers.get("content-type", "application/octet-stream")
+        resp = HttpResponse(r.content, content_type=ct)
+        cd = r.headers.get("content-disposition")
+        if cd:
+            resp["Content-Disposition"] = cd
+        return resp
+    except requests.RequestException as e:
+        return JsonResponse({"error":"upstream_error","detail":str(e)}, status=502)
+
+# **NUEVO**: Ticket JSON (lo que mostraste)
+def doc_descargar_json(request, doc_id: str):
+    """Proxy de /api/documentos/descargar/:id — devuelve JSON del ticket."""
+    err, data = _get(request, f"{DOCS_DESCARGAR}/{doc_id}")
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    return JsonResponse(data or {}, safe=False)
+
+# Detalle de venta por ID (para fallbacks de jsPDF si lo necesitaras)
+def venta_detalle_json(request, venta_id: str):
+    err, data = _get(request, f"{VENTAS_GET}/{venta_id}")
+    if err == "unauthorized":
+        return JsonResponse({"error":"unauthorized"}, status=401)
+    return JsonResponse(data or {}, safe=False)

@@ -21,7 +21,7 @@ urlpatterns = [
     # Reportes / Pedidos / Config
     path('report/', core.report_view, name='reports'),
     path('order/', core.order_view, name='orders'),
-    path('settings/', core.inventory_view, name='settings'),  # si tienes una view específica de settings, cámbiala aquí
+    path('settings/', core.settings_view, name='settings'),  # si tienes una view específica de settings, cámbiala aquí
 
     # Proveedores
     path('supplier/', core.supplier_view, name='suppliers'),           # listado
@@ -45,6 +45,35 @@ urlpatterns = [
     # Bridge (JS -> Django) para token en sesión
     path('bridge/store-token/', core.bridge_store_token, name='bridge_store_token'),
     path('bridge/clear-token/', core.bridge_clear_token, name='bridge_clear_token'),
+
+      # Página
+    path("orders/", core.orders_view, name="orders"),
+
+    # JSON (proxy)
+    path("orders/api/list/", core.orders_list_json, name="orders_list_json"),
+    path("orders/api/<int:order_id>/", core.order_detail_json, name="order_detail_json"),
+    path("orders/api/create/", core.order_create_json, name="order_create_json"),
+    path("orders/api/<int:order_id>/status/", core.order_patch_status_json, name="order_patch_status_json"),
+    path("orders/api/proveedores/", core.proveedores_all_json, name="proveedores_all_json"),
+
+
+    # Catálogos
+    path("orders/api/farmacias/", core.farmacias_json, name="farmacias_json"),
+    path("orders/api/proveedores/<int:prov_id>/medicamentos/", core.proveedor_medicamentos_json, name="proveedor_medicamentos_json"),
+
+    path('inventario/search/', core.search_inventory, name='search_inventory'),
+    path('inventario/search',  core.search_inventory), 
+
+    path('inventario/meds/search', core.search_meds, name='search_meds'),
+    path('inventario/meds/search/', core.search_meds),  # compat
+
+    # urls.py
+    path('api/documentos/tipo/<str:tipo>', core.docs_by_tipo_json, name='docs_by_tipo_json'),
+    path('api/documentos/<str:doc_id>',     core.doc_by_id_stream, name='doc_by_id_stream'),           # por si es PDF
+    path('api/documentos/descargar/<str:doc_id>', core.doc_descargar_json, name='doc_descargar_json'),  # JSON de ticket
+    path('api/ventas/<str:venta_id>',       core.venta_detalle_json, name='venta_detalle_json'),
+
+
 
     # Otros
     path('asda/', core.navbar, name='navbar'),

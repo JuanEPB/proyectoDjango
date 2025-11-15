@@ -1,83 +1,387 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  	<meta charset="utf-8">
-  	<meta name="viewport" content="initial-scale=1, width=device-width">
-  	
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Pedidos · Pharmacontrol</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="{% static 'css/pharmacontrol.css' %}">
-  	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 </head>
 <body>
-    <div class="dashboard">
-                <div class="side-bar">
-    <div>
-        <div class="logo">Pharmacontrol</div>
-        <div class="list-menu1">
-            <div class="list-menu2">
-                <div class="content">
-                    <i class="bi bi-house"></i>
-                    <div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div>
-                </div>
-            </div>
-            <div class="list-menu3">
-                <div class="content">
-                    <i class="bi bi-box"></i>
-                    <div class="text"><a href="{% url 'inventory' %}">Inventario</a></div>
-                </div>
-            </div>
-            <div class="list-menu3">
-                <div class="content">
-                    <i class="bi bi-files"></i>
-                    <div class="text"><a href="{% url 'reports' %}">Reportes</a></div>
-                </div>
-            </div>
-            <div class="list-menu3">
-                <div class="content">
-                    <i class="bi bi-people"></i>
-                    <div class="text"><a href="{% url 'users' %}">Usuarios</a></div>
-                </div>
-            </div>
-            <div class="list-menu3">
-                <div class="content">
-                    <i class="bi bi-truck"></i>
-                    <div class="text"><a href="{% url 'orders' %}">Pedidos</a></div>
-                </div>
-            </div>
-            <div class="list-menu3">
-                <div class="content">
-                    <i class="bi bi-cart-check"></i>
-                    <div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div>
-                </div>
-            </div>
-            <div class="list-menu3">
-                <div class="content">
-                    <i class="bi bi-cart3"></i>
-                    <div class="text"><a href="{% url 'carrito' %}">Carrito</a></div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <div class="list-menu-parent">
-        <div class="list-menu8">
-            <div class="content">
-                <i class="bi bi-gear"></i>
-                <div class="text"><p><a href="{% url 'settings' %}">Configuración</a></p></div>
-            </div>
-        </div>
-        <div class="list-menu8">
-            <div class="content">
-                <form method="post" action="{% url 'logout' %}">
-                    {% csrf_token %}
-                    <button type="submit"><i class="bi bi-door-open"></i>Cerrar sesión</button>
-                </form>
-            </div>
-        </div>
+<div class="submenu">
+  <div class="side-bar">
+    <div>
+      <div class="logo">Pharmacontrol</div>
+      <div class="list-menu1">
+        <div class="content"><i class="bi bi-house"></i><div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div></div>
+        <div class="content"><i class="bi bi-box"></i><div class="text"><a href="{% url 'inventory' %}">Inventario</a></div></div>
+        <div class="content"><i class="bi bi-files"></i><div class="text"><a href="{% url 'reports' %}">Reportes</a></div></div>
+        <div class="content"><i class="bi bi-people"></i><div class="text"><a href="{% url 'users' %}">Usuarios</a></div></div> 
+        <div class="content active"><i class="bi bi-truck"></i><div class="text"><a href="{% url 'orders' %}">Pedidos</a></div></div>
+        <div class="content"><i class="bi bi-cart-check"></i><div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div></div>
+        <div class="content"><i class="bi bi-cart3"></i><div class="text"><a href="{% url 'carrito' %}">Carrito</a></div></div>
+      </div>
     </div>
+    <div class="list-menu-parent">
+      <div class="content"><i class="bi bi-gear"></i><div class="text"><a href="{% url 'settings' %}">Configuración</a></div></div>
+      <div class="content">
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+          <button type="submit"><i class="bi bi-door-open"></i> Cerrar sesión</button>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 
+<div class="appbar">
+  <div class="crumbs">Abasto / <b>Pedidos</b></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <i class="bi bi-search"></i>
+    <input id="q" class="form-control form-control-sm" placeholder="Buscar pedido…">
+  </div>
+  <div class="user">
+    <div class="avatar"></div>
+    <span class="text-muted-2">Sesión activa</span>
+  </div>
+</div>
+
+<div class="contenido">
+  <div class="page-header">
+    <div>
+      <div class="title">Pedidos</div>
+      <div class="subtitle">Control de órdenes a proveedores y estatus.</div>
     </div>
+    <div class="filters d-flex gap-2">
+      <select id="fStatus" class="form-select form-select-sm" style="max-width:180px">
+        <option value="">Todos</option>
+        <option value="ENVIADO">Pendientes</option>
+        <option value="RECIBIDO">Recibidos</option>
+        <option value="CANCELADO">Cancelados</option>
+      </select>
+      <button id="btnNuevo" class="btn-ghost"><i class="bi bi-plus-lg"></i> Nuevo pedido</button>
+    </div>
+  </div>
+
+  <!-- Tabla dinámica (llenada por JS contra views JSON) -->
+  <div class="table-card">
+    <div class="table-responsive" style="max-height:520px;overflow:auto;">
+      <table class="table table-striped table-bordered align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Proveedor</th>
+            <th>Farmacia</th>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th>Estatus</th>
+            <th style="width:140px">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" class="empty d-none">
+      <div class="icon">🚚</div><div>No hay pedidos registrados.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL (nativo) NUEVO PEDIDO -->
+<dialog id="dlgNuevo" class="rounded-2xl p-0" style="width: 820px; border: none;">
+  <form id="frmNuevo" method="dialog" class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h2 class="h5 m-0">Nuevo pedido</h2>
+      <button type="button" id="btnCloseNuevo" class="btn btn-sm btn-outline-secondary">Cerrar</button>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label">Proveedor</label>
+        <select id="proveedor" class="form-select"></select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Farmacia</label>
+        <select id="farmacia" class="form-select"></select>
+      </div>
+    </div>
+
+    <div class="row g-3 align-items-end mb-3">
+      <div class="col-md-7">
+        <label class="form-label">Medicamento</label>
+        <select id="medicamento" class="form-select"></select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Cantidad</label>
+        <input id="cantidad" type="number" min="1" value="1" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <button id="btnAdd" type="button" class="btn btn-outline-primary w-100">
+          <i class="bi bi-plus"></i> Agregar
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive border rounded mb-2">
+      <table class="table table-sm mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Medicamento</th>
+            <th>Cant</th>
+            <th>Precio</th>
+            <th>Subtotal</th>
+            <th style="width:60px"></th>
+          </tr>
+        </thead>
+        <tbody id="items"></tbody>
+      </table>
+    </div>
+    <div class="text-end fs-5 mb-3">Total: $ <span id="total">0.00</span></div>
+
+    <div class="text-end">
+      <button id="btnCreate" class="btn btn-primary">Crear pedido</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- MODAL (nativo) VER PEDIDO -->
+<dialog id="dlgView" class="rounded-2xl p-0" style="width: 740px; border: none;">
+  <div class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h2 class="h5 m-0">Detalle del pedido</h2>
+      <button id="btnCloseView" class="btn btn-sm btn-outline-secondary">Cerrar</button>
+    </div>
+
+    <div id="viewHead" class="small text-muted mb-2"></div>
+
+    <div class="table-responsive border rounded mb-2">
+      <table class="table table-sm mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Medicamento</th>
+            <th>Cant</th>
+            <th>Precio</th>
+            <th>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody id="viewItems"></tbody>
+      </table>
+    </div>
+    <div class="text-end fs-5">Total: $ <span id="viewTotal">0.00</span></div>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Endpoints Django (views) para pedidos -->
+<script>
+  window.ORDERS_ENDPOINTS = {
+    list:        "{% url 'orders_list_json' %}",
+    detail:      (id)=> "{% url 'order_detail_json' 0 %}".replace('/0/','/'+id+'/'),
+    create:      "{% url 'order_create_json' %}",
+    patchStatus: (id)=> "{% url 'order_patch_status_json' 0 %}".replace('/0/','/'+id+'/'),
+    farmacias:   "{% url 'farmacias_json' %}",
+    provMeds:    (id)=> "{% url 'proveedor_medicamentos_json' 0 %}".replace('/0/','/'+id+'/'),
+    providers:   "{% url 'proveedores_all_json' %}",   // <--- NUEVO
+  };
+</script>
+
+<script>
+const EP = window.ORDERS_ENDPOINTS;
+const $ = (sel)=>document.querySelector(sel);
+const money = (n)=> (Math.round((+n)*100)/100).toFixed(2);
+
+let carrito = [];
+let catalogoMeds = [];
+
+// ---------- LISTA ----------
+async function cargarLista(){
+  const q = $("#q")?.value?.toLowerCase() || '';
+  const f = $("#fStatus")?.value || '';
+
+  const res = await fetch(EP.list);
+  const data = await res.json();
+  const pedidos = Array.isArray(data) ? data : [];
+
+  const tb = $("#tbody"); tb.innerHTML = '';
+  const rows = pedidos
+    .filter(p => !q || (p.proveedor?.nombre||'').toLowerCase().includes(q) || (p.farmacia?.nombre||'').toLowerCase().includes(q))
+    .filter(p => !f || p.estatus === f);
+
+  if(rows.length === 0){
+    document.getElementById('emptyState')?.classList.remove('d-none');
+    return;
+  }
+  document.getElementById('emptyState')?.classList.add('d-none');
+
+  rows.forEach(p=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>#${p.id}</td>
+      <td>${p.proveedor?.nombre ?? '-'}</td>
+      <td>${p.farmacia?.nombre ?? '-'}</td>
+      <td>${p.fechaPedido ? new Date(p.fechaPedido).toLocaleDateString() : '-'}</td>
+      <td>$ ${money(p.total ?? 0)}</td>
+      <td>${
+        p.estatus === 'RECIBIDO' ? '<span class="chip">Recibido</span>' :
+        p.estatus === 'CANCELADO' ? '<span class="chip warn">Cancelado</span>' :
+        '<span class="chip ok">Pendiente</span>'
+      }</td>
+      <td class="text-nowrap">
+        <button class="btn btn-sm btn-ghost btn-ver" data-id="${p.id}" title="Ver"><i class="bi bi-eye"></i></button>
+        ${p.estatus!=='RECIBIDO' ? `<button class="btn btn-sm btn-ghost btn-recibir" data-id="${p.id}" title="Recibir"><i class="bi bi-check2-circle"></i></button>` : ''}
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ---------- CATÁLOGOS ----------
+async function cargarProveedores(){
+  const res = await fetch(EP.providers);
+  const list = await res.json();
+  $("#proveedor").innerHTML = (list||[]).map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+}
+
+async function cargarFarmacias(){
+  const res = await fetch(EP.farmacias);
+  const list = await res.json();
+  $("#farmacia").innerHTML = (list||[]).map(f=>`<option value="${f.id}">${f.nombre}</option>`).join('');
+}
+
+async function cargarMedsPorProveedor(){
+  const pid = Number($("#proveedor").value);
+  const res = await fetch(EP.provMeds(pid));
+  catalogoMeds = await res.json();
+  $("#medicamento").innerHTML = (catalogoMeds||[]).map(m=>`
+    <option value="${m.id}" data-precio="${m.precio ?? 0}">${m.nombre}</option>
+  `).join('');
+}
+
+// ---------- MODAL NUEVO ----------
+function renderItems(){
+  const tb = $("#items"); tb.innerHTML = '';
+  let total = 0;
+  carrito.forEach((it, idx)=>{
+    total += it.subtotal;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${it.nombre}</td>
+      <td>${it.cantidad}</td>
+      <td>$ ${money(it.precio)}</td>
+      <td>$ ${money(it.subtotal)}</td>
+      <td><button class="btn btn-sm btn-outline-danger" data-i="${idx}">✖</button></td>`;
+    tb.appendChild(tr);
+  });
+  $("#total").textContent = money(total);
+
+  tb.onclick = (e)=>{
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    carrito.splice(+btn.dataset.i,1);
+    renderItems();
+  };
+}
+
+document.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+
+  if(btn.id === 'btnNuevo'){
+    carrito = []; renderItems();
+    await cargarProveedores();
+    await cargarFarmacias();
+    await cargarMedsPorProveedor();
+    $("#dlgNuevo").showModal();
+  }
+
+  if(btn.id === 'btnCloseNuevo'){ $("#dlgNuevo").close(); }
+  if(btn.id === 'btnCloseView'){  $("#dlgView").close();  }
+
+  if(btn.classList.contains('btn-ver')){
+    const id = btn.dataset.id;
+    const res = await fetch(EP.detail(id));
+    if(!res.ok) return alert('No se pudo cargar el detalle');
+    const p = await res.json();
+    $("#viewHead").innerHTML = `
+      <div><b>Proveedor:</b> ${p.proveedor?.nombre ?? '-'}</div>
+      <div><b>Farmacia:</b> ${p.farmacia?.nombre ?? '-'}</div>
+      <div><b>Estatus:</b> ${p.estatus}</div>
+      <div><b>Pedido:</b> ${p.fechaPedido ? new Date(p.fechaPedido).toLocaleString() : '-'}</div>
+      ${p.fechaRecibido ? `<div><b>Recibido:</b> ${new Date(p.fechaRecibido).toLocaleString()}</div>` : '' }
+    `;
+    const tb = $("#viewItems"); tb.innerHTML = '';
+    let total = 0;
+    (p.items||[]).forEach(it=>{
+      const subtotal = (it.subtotal ?? (it.precioUnitario * it.cantidad)) || 0;
+      total += subtotal;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${it.medicamento?.nombre ?? '-'}</td>
+        <td>${it.cantidad}</td>
+        <td>$ ${money(it.precioUnitario ?? 0)}</td>
+        <td>$ ${money(subtotal)}</td>`;
+      tb.appendChild(tr);
+    });
+    $("#viewTotal").textContent = money(total);
+    $("#dlgView").showModal();
+  }
+
+  if(btn.classList.contains('btn-recibir')){
+    const id = btn.dataset.id;
+    if(!confirm('¿Confirmar recepción del pedido?')) return;
+    const res = await fetch(EP.patchStatus(id), {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ estatus: 'RECIBIDO' })
+    });
+    if(!res.ok){
+      const txt = await res.text().catch(()=> '');
+      return alert('No se pudo recibir el pedido.\n'+txt);
+    }
+    await cargarLista();
+  }
+});
+
+$("#proveedor")?.addEventListener('change', cargarMedsPorProveedor);
+$("#btnAdd")?.addEventListener('click', ()=>{
+  const sel = $("#medicamento").selectedOptions[0];
+  if(!sel) return;
+  const medicamentoId = +sel.value;
+  const nombre = sel.textContent;
+  const precio = +sel.dataset.precio || 0;
+  const cantidad = +$("#cantidad").value || 1;
+
+  const exist = carrito.find(x=>x.medicamentoId===medicamentoId);
+  if(exist){ exist.cantidad += cantidad; exist.subtotal = exist.cantidad*precio; }
+  else { carrito.push({ medicamentoId, nombre, precio, cantidad, subtotal: cantidad*precio }); }
+  renderItems();
+});
+
+$("#btnCreate")?.addEventListener('click', async (e)=>{
+  e.preventDefault();
+  if(!carrito.length) return alert('Agrega al menos 1 medicamento');
+
+  const payload = {
+    proveedorId: +$("#proveedor").value,
+    farmaciaId: +$("#farmacia").value,
+    items: carrito.map(x=>({ medicamentoId: x.medicamentoId, cantidad: x.cantidad, precioUnitario: x.precio }))
+  };
+
+  const res = await fetch(EP.create, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+  });
+  if(!res.ok){
+    const txt = await res.text().catch(()=> '');
+    return alert('Error al crear pedido.\n'+txt);
+  }
+  $("#dlgNuevo").close();
+  await cargarLista();
+});
+
+// init
+document.addEventListener('DOMContentLoaded', cargarLista);
+</script>
+
 </body>
 </html>

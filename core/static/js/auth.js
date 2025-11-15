@@ -11,16 +11,22 @@ const scheduleRefresh=(t)=>{if(REFRESH_TIMER)clearTimeout(REFRESH_TIMER); if(!t)
 
 async function loginFront(email, pass){
   const r = await fetch(`${BASE_URL}/api/auth/login`, {
-    method:'POST', credentials:'include',
-    headers:{'Content-Type':'application/json','Accept':'application/json'},
-    body: JSON.stringify({ email, contraseña: pass }) // <- OJO
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ email, contraseña: pass }) // 👈 ahora igual que en la DB
   });
-  if(!r.ok) throw new Error('Credenciales incorrectas');
+
+  if (!r.ok) throw new Error('Credenciales incorrectas');
   const data = await r.json();
-  if(!data?.accessToken) throw new Error('Sin accessToken');
+  if (!data?.accessToken) throw new Error('Sin accessToken');
   saveAccessToken(data.accessToken);
-  return data.user||null;
+  return data.user || null;
 }
+
 
 async function refreshAccess(){
   const r = await fetch(`${BASE_URL}/api/auth/refresh`, { method:'POST', credentials:'include', headers:{'Accept':'application/json'} });

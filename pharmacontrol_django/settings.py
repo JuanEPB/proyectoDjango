@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-_k(1x$su0g&81c=v+lr-=dceq=f&mu1wot0&ph0-#)+$amh-39
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '[::1]']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '[::1]', '18.191.169.4']
 
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8001",
@@ -133,3 +134,4 @@ STATICFILES_DIRS = [ BASE_DIR / 'core/static' ]
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+API_URL = os.getenv("API_URL")

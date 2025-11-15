@@ -1,131 +1,265 @@
+{% extends "core/base.html" %}
 {% load static %}
-<!DOCTYPE html lang="es">
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-  <!-- CSS padre para todo el sistema -->
-  <link rel="stylesheet" href="{% static 'css/pharmacontrol.css' %}">
-</head>
-<body>
+{% block title %}Dashboard · Pharmacontrol{% endblock %}
 
-<!-- ===== SIDEBAR ===== -->
-<div class="submenu">
-  <div class="side-bar">
-    <div>
-      <div class="logo">Pharmacontrol</div>
-      <div class="list-menu1">
-        <div class="content active">
-          <i class="bi bi-house"></i>
-          <div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div>
-        </div>
-        <div class="content"><i class="bi bi-box"></i><div class="text"><a href="{% url 'inventory' %}">Inventario</a></div></div>
-        <div class="content"><i class="bi bi-files"></i><div class="text"><a href="{% url 'reports' %}">Reportes</a></div></div>
-        {% comment %} <div class="content"><i class="bi bi-people"></i><div class="text"><a href="{% url 'users' %}">Usuarios</a></div></div> {% endcomment %}
-        <div class="content"><i class="bi bi-truck"></i><div class="text"><a href="{% url 'orders' %}">Pedidos</a></div></div>
-        <div class="content"><i class="bi bi-cart-check"></i><div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div></div>
-        <div class="content"><i class="bi bi-cart3"></i><div class="text"><a href="{% url 'carrito' %}">Carrito</a></div></div>
-      </div>
-    </div>
+{% block content %}
 
-    <div class="list-menu-parent">
-      <div class="list-menu8">
-        <div class="content"><i class="bi bi-gear"></i><div class="text"><a href="{% url 'settings' %}">Configuración</a></div></div>
-      </div>
-      <div class="list-menu8">
-        <div class="content">
-          <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-            <button type="submit"><i class="bi bi-door-open"></i>Cerrar sesión</button>
-          </form>
-        </div>
-      </div>
-    </div>
+<div class="appbar">
+  <div class="crumbs">Pharmacontrol / <b>Dashboard</b></div>
+  <div class="spacer"></div>
+
+  <div class="appbar-search position-relative" style="min-width:340px;">
+    <i class="bi bi-search position-absolute" style="left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"></i>
+    <input
+      id="global-search"
+      type="search"
+      class="form-control form-control-sm ps-4"
+      placeholder="Buscar medicamentos, proveedores, pedidos o ventas…"
+      aria-label="Buscar en el inventario"
+      role="combobox"
+      aria-expanded="false"
+      aria-autocomplete="list"
+      aria-controls="global-results"
+      autocomplete="off"
+      data-url="{% url 'search_inventory' %}"
+    >
+    <div
+      id="global-results"
+      role="listbox"
+      class="list-group shadow-sm"
+      style="position:absolute;top:100%;left:0;right:0;z-index:1050;display:none;max-height:360px;overflow:auto;border-radius:0.75rem;"
+    ></div>
+  </div>
+
+  <div class="user">
+    <div class="avatar"></div>
+    <span class="text-muted-2">Sesión activa</span>
   </div>
 </div>
 
-<!-- ===== CONTENIDO ===== -->
-<div class="contenido">
-
-  <!-- Header + filtros -->
   <div class="page-header">
     <div class="title">Dashboard</div>
     <div class="filters">
-      <select class="form-select" id="filtroPeriodo">
-        <option value="30">Últimos 30 días</option>
-        <option value="90">Últimos 3 meses</option>
-        <option value="365">Último año</option>
-      </select>
-      <input class="form-control" id="buscador" placeholder="Buscar medicamento o categoría..." />
+
+
     </div>
   </div>
 
-  <!-- KPIs -->
+
   <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-label">Total Medicamentos</div><div id="kpi-total" class="kpi-value">0</div><div class="kpi-trend trend-up">Operativo</div></div>
-    <div class="kpi"><div class="kpi-label">Stock Crítico (&lt; 10)</div><div id="kpi-criticos" class="kpi-value">0</div><div class="kpi-trend trend-warn">Reponer pronto</div></div>
-    <div class="kpi"><div class="kpi-label">Caducados</div><div id="kpi-caducados" class="kpi-value">0</div><div class="kpi-trend trend-down">Revisión urgente</div></div>
+    <div class="kpi badge-up"><div class="kpi-label">Total Medicamentos</div><div id="kpi-total" class="kpi-value">0</div><div class="kpi-trend trend-up">Operativo</div></div>
+    <div class="kpi badge-warn"><div class="kpi-label">Stock Crítico (&lt; 10)</div><div id="kpi-criticos" class="kpi-value">0</div><div class="kpi-trend trend-warn">Reponer pronto</div></div>
+    <div class="kpi badge-down"><div class="kpi-label">Caducados</div><div id="kpi-caducados" class="kpi-value">0</div><div class="kpi-trend trend-down">Revisión urgente</div></div>
     <div class="kpi"><div class="kpi-label">Órdenes Pendientes</div><div id="kpi-ordenes" class="kpi-value">0</div><div class="kpi-trend">En seguimiento</div></div>
   </div>
 
-  <!-- Gráficas -->
   <div class="cards-grid">
-    <div class="card span-3">
-      <h4>Resumen General</h4>
-      <div class="chart-wrap"><canvas id="graficaResumen"></canvas></div>
-    </div>
-
-    <div class="card span-4">
-      <h4>Stock por Medicamento</h4>
-      <div class="chart-wrap"><canvas id="graficaStock"></canvas></div>
-    </div>
-
-    <div class="card span-5">
-      <h4>Ventas Mensuales</h4>
-      <div class="chart-wrap"><canvas id="graficaVentas"></canvas></div>
-    </div>
-
-    <div class="card span-4">
-      <h4>Medicamentos por Categoría</h4>
-      <div class="chart-wrap"><canvas id="graficaCategorias"></canvas></div>
-    </div>
-
-    <div class="card span-4">
-      <h4>Rotación (salidas) por Categoría</h4>
-      <div class="chart-wrap"><canvas id="graficaRotacion"></canvas></div>
-    </div>
-
-    <div class="card span-4">
-      <h4>Vencimientos Próximos (30/60/90 días)</h4>
-      <div class="chart-wrap"><canvas id="graficaVencimientos"></canvas></div>
-    </div>
+    <div class="card span-4"><h4>Resumen General</h4><div class="chart-wrap"><canvas id="graficaResumen"></canvas></div></div>
+    <div class="card span-4"><h4>Stock por Medicamento</h4><div class="chart-wrap"><canvas id="graficaStock"></canvas></div></div>
+    <div class="card span-4"><h4>Medicamentos por Categoría</h4><div class="chart-wrap"><canvas id="graficaCategorias"></canvas></div></div>
+    <div class="card span-6"><h4>Rotación (salidas) por Categoría</h4><div class="chart-wrap"><canvas id="graficaRotacion"></canvas></div></div>
+    <div class="card span-6"><h4>Vencimientos Próximos (30/60/90 días)</h4><div class="chart-wrap"><canvas id="graficaVencimientos"></canvas></div></div>
   </div>
 
-  <!-- Tabla -->
   <div class="table-card">
     <h4 class="mb-2" style="color:var(--brand)">Lista de Medicamentos</h4>
     <div class="table-responsive" style="max-height: 420px; overflow:auto;">
       <table class="table table-striped table-bordered align-middle">
         <thead class="table-light">
-          <tr>
-            <th>ID</th><th>Nombre</th><th>Lote</th><th>Caducidad</th><th>Proveedor</th><th>Stock</th><th>Precio</th><th>Categoría</th>
-          </tr>
+          <tr><th>ID</th><th>Nombre</th><th>Lote</th><th>Caducidad</th><th>Proveedor</th><th>Stock</th><th>Precio</th><th>Categoría</th></tr>
         </thead>
         <tbody id="tabla-meds"></tbody>
       </table>
     </div>
   </div>
-
 </div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block scripts %}
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     window.__DATA__ = {{ chart_data_json|safe }};
-    window.__MEDS__ = {{ meds_json|safe }};  /* listado completo */
+    window.__MEDS__ = {{ meds_json|safe }};
   </script>
   <script src="{% static 'js/dashboard.js' %}"></script>
-</body>
-</html>
+
+  <!-- Tu buscador global (puedes dejar el que ya tienes) -->
+  <script>
+    // usa data-url y tu render actual de resultados...
+  </script>
+
+  <!-- Render de gráficas y tabla (seguro, sin fallar si falta algo) -->
+  <script>
+  (function(){
+    // Helper seguro
+    const D = window.__DATA__ || {};
+    const M = Array.isArray(window.__MEDS__) ? window.__MEDS__ : [];
+
+    // 1) KPI
+    try {
+      const resumen = D.resumen || {};
+      document.getElementById('kpi-total').textContent     = (M.length || 0);
+      document.getElementById('kpi-criticos').textContent  = (resumen.criticos || 0);
+      document.getElementById('kpi-caducados').textContent = (resumen.caducados || 0);
+      document.getElementById('kpi-ordenes').textContent   = 0; // si aún no tienes conteo real
+    } catch(e){ console.warn('KPI warn', e); }
+
+    // 2) Tabla de medicamentos
+    try {
+      const $tb = document.getElementById('tabla-meds');
+      if ($tb && M.length){
+        $tb.innerHTML = M.map(m => `
+          <tr>
+            <td>${m.id ?? ''}</td>
+            <td>${m.nombre ?? ''}</td>
+            <td>${m.lote ?? ''}</td>
+            <td>${m.caducidad ?? ''}</td>
+            <td>${(m.proveedor && m.proveedor.nombre) ? m.proveedor.nombre : (m.proveedor ?? '')}</td>
+            <td>${m.stock ?? 0}</td>
+            <td>${(m.precio!=null) ? ('$' + Number(m.precio).toFixed(2)) : '$0.00'}</td>
+            <td>${(m.categoria && m.categoria.nombre) ? m.categoria.nombre : (m.categoria ?? 'Sin categoría')}</td>
+          </tr>
+        `).join('');
+      }
+    } catch(e){ console.warn('Tabla warn', e); }
+
+    // 3) Gráfica: Stock por Medicamento (usa top que ya preparaste en __DATA__)
+    try {
+      const ctx = document.getElementById('graficaStock')?.getContext('2d');
+      if (ctx) {
+        const stockTop = D.stockTop || { labels: [], values: [] };
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: stockTop.labels || [],
+            datasets: [{
+              label: 'Stock',
+              data: stockTop.values || [],
+              backgroundColor: 'rgba(75, 192, 192, 0.5)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+      }
+    } catch(e){ console.warn('Chart stock warn', e); }
+
+    // 4) Otras gráficas (si ya mandas datos)
+    try {
+      const resumenCanvas = document.getElementById('graficaResumen')?.getContext('2d');
+      if (resumenCanvas && D.resumen) {
+        const r = D.resumen;
+        new Chart(resumenCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['Disponibles', 'Críticos', 'Caducados'],
+            datasets: [{ data: [r.disponibles||0, r.criticos||0, r.caducados||0] }]
+          }
+        });
+      }
+    } catch(e){ console.warn('Chart resumen warn', e); }
+
+    try {
+      const catCanvas = document.getElementById('graficaCategorias')?.getContext('2d');
+      if (catCanvas && D.categorias) {
+        new Chart(catCanvas, {
+          type: 'bar',
+          data: { labels: D.categorias.labels||[], datasets: [{ label: 'Categorías', data: D.categorias.values||[] }] }
+        });
+      }
+    } catch(e){ console.warn('Chart categorias warn', e); }
+
+    try {
+      const rotCanvas = document.getElementById('graficaRotacion')?.getContext('2d');
+      if (rotCanvas && D.rotacion) {
+        new Chart(rotCanvas, {
+          type: 'line',
+          data: { labels: D.rotacion.labels||[], datasets: [{ label: 'Rotación', data: D.rotacion.values||[] }] }
+        });
+      }
+    } catch(e){ console.warn('Chart rotacion warn', e); }
+
+    try {
+      const vCanvas = document.getElementById('graficaVencimientos')?.getContext('2d');
+      if (vCanvas && D.vencimientos) {
+        const v = D.vencimientos;
+        new Chart(vCanvas, {
+          type: 'bar',
+          data: { labels: ['30 días','60 días','90 días'], datasets: [{ label: 'Vencimientos', data: [v.d30||0,v.d60||0,v.d90||0] }] }
+        });
+      }
+    } catch(e){ console.warn('Chart vencimientos warn', e); }
+  })();
+  </script>
+
+  <!-- Tu archivo principal -->
+  <script src="{% static 'js/dashboard.js' %}"></script>
+
+  <!-- Buscador (usa la URL del data-atributo) -->
+  <script>
+  (() => {
+    const $inp = document.getElementById('global-search');
+    const $box = document.getElementById('global-results');
+    if(!$inp || !$box) return;
+
+    const debounce = (fn, ms=250) => { let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); } };
+    let activeIndex = -1;
+    const url = $inp.dataset.url || '/inventario/search';
+
+    function hideBox(){ $box.style.display='none'; $box.innerHTML=''; activeIndex=-1; $inp.setAttribute('aria-expanded','false'); }
+    function showBox(){ if($box.innerHTML.trim()){ $box.style.display='block'; $inp.setAttribute('aria-expanded','true'); } }
+    function badgeClass(type){ return ({Medicamento:'bg-primary',Proveedor:'bg-success',Pedido:'bg-warning text-dark',Venta:'bg-info text-dark'})[type] || 'bg-secondary'; }
+    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+
+    function render(items){
+      if(!items.length){ hideBox(); return; }
+      $box.innerHTML = items.map((r,i)=> `
+        <a id="opt-${i}" role="option" href="${r.url}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start" data-idx="${i}">
+          <div class="ms-2 me-auto">
+            <div class="fw-semibold">
+              <span class="badge rounded-pill ${badgeClass(r.type)} me-2">${r.type}</span>${escapeHtml(r.label)}
+            </div>
+            <small class="text-muted">${escapeHtml(r.sub || '')}</small>
+          </div>
+          ${r.extra ? `<span class="badge bg-light text-dark border">${escapeHtml(r.extra)}</span>` : ''}
+        </a>
+      `).join('');
+      showBox();
+    }
+
+    const doSearch = debounce(async (q) => {
+      if(!q || q.trim().length < 2){ hideBox(); return; }
+      try {
+        const resp = await fetch(`${url}?q=${encodeURIComponent(q.trim())}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if(!resp.ok) throw new Error('HTTP '+resp.status);
+        const data = await resp.json();
+        render(data.results || []);
+      } catch(e){ console.error('Search error', e); hideBox(); }
+    });
+
+    $inp.addEventListener('input', e => doSearch(e.target.value));
+    $inp.addEventListener('focus', ()=> { if($box.innerHTML.trim()) showBox(); });
+    document.addEventListener('click', (e)=> { if(!( $box.contains(e.target) || $inp.contains(e.target) )) hideBox(); });
+
+    $inp.addEventListener('keydown', (e)=>{
+      const links = [...$box.querySelectorAll('a.list-group-item')];
+      if(!links.length) return;
+      if(e.key === 'ArrowDown'){ e.preventDefault(); activeIndex = (activeIndex+1) % links.length; highlight(links); }
+      if(e.key === 'ArrowUp'){ e.preventDefault(); activeIndex = (activeIndex-1+links.length) % links.length; highlight(links); }
+      if(e.key === 'Enter'){ if(activeIndex>=0){ e.preventDefault(); links[activeIndex].click(); } }
+      if(e.key === 'Escape'){ hideBox(); }
+    });
+
+    function highlight(links){
+      links.forEach(a=>a.classList.remove('active'));
+      if(activeIndex>=0 && links[activeIndex]) {
+        links[activeIndex].classList.add('active');
+        $inp.setAttribute('aria-activedescendant', `opt-${activeIndex}`);
+        links[activeIndex].scrollIntoView({ block:'nearest' });
+      }
+    }
+  })();
+  </script>
+{% endblock %}

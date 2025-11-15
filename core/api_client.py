@@ -1,6 +1,8 @@
 import requests
+import os
 
-API_BASE_URL = "http://localhost:3000"  # Cambia si tu API está en otra URL
+API_BASE_URL = os.getenv("API_URL")  # Cambia si tu API está en otra URL
+
 
 def obtener_medicamentos():
     try:
