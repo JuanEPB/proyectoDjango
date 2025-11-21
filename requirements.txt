@@ -7,3 +7,13 @@ requests==2.32.3
 sqlparse==0.5.3
 tzdata==2025.2
 urllib3==2.4.0
+gunicorn
+psycopg2-binary
+boto3
+django-storages
+python-dotenv
+django-cors-headers
+python-dotenv
+dj-database-url
+whitenoise
+django-cors-headers
