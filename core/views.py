@@ -16,13 +16,13 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 
 from django.conf import settings
-from api_client import API_BASE_URL  # Asegúrate de que este archivo exista y tenga la URL base correcta
-# Ajusta estos imports a tus modelos reales
+from api_client import API_BASE_URL  
 
 # =========================
 # Config
 # =========================
-NEST_BASE = "http://18.191.169.4:3000"
+
+NEST_BASE = settings.API_URL
 
 API = {
     "meds_all":     f"{NEST_BASE}/api/medicamentos/all",

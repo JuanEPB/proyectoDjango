@@ -26,7 +26,7 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
     "http://127.0.0.1:8001,http://localhost:8001"
 ).split(",")
-SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
+SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")  # "Lax" para dev, "Strict" para prod
 SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False") == "True"
 CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False") == "True"
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "False") == "True"
@@ -125,11 +125,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 API_URL = os.getenv("API_URL", "http://127.0.0.1:3000")
 
 # CORS: permitir frontend y la API (ajusta si necesitas más)
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS",
-    "https://pharmacontrol.site,https://api.pharmacontrol.site,http://127.0.0.1:8000"
-).split(",")
+CORS_ALLOWED_ORIGINS_STR = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR.split(",") if origin.strip()]
 
+# Si necesitas permitir todos los orígenes en desarrollo (¡cuidado en producción!)
+# if DEBUG:
+#     CORS_ALLOW_ALL_ORIGINS = True
 # Logging básico (puedes extenderlo)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOGGING = {
@@ -143,3 +144,17 @@ LOGGING = {
         "level": LOG_LEVEL,
     },
 }
+
+# Después de CORS_ALLOWED_ORIGINS
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]

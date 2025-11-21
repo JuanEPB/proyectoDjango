@@ -8,5 +8,11 @@ db.sqlite3
 # Ignorar archivos de log y temporales
 *.log
 *.sqlite3-journal
-
+# Ignorar entorno virtual
+venv/
+__pycache__/
+*.pyc
+db.sqlite3
 .env
+*.log
+/staticfiles/
