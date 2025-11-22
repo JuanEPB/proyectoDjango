@@ -21,18 +21,24 @@ jobs:
       - name: 3. Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v21
         with:
+          # Credenciales IAM con permisos para EB y S3
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          
+          # Información de tu aplicación y entorno
           application_name: "pharmacontrol"
           environment_name: "Pharmacontrol-env"
           region: "us-east-2"
           
-          # Etiqueta de versión siempre única usando SHA y timestamp
+          # Versión siempre única para evitar conflictos
           version_label: "deploy-${{ github.sha }}-${{ github.run_id }}"
           
+          # Archivo a desplegar
           deployment_package: deploy.zip
+          
+          # Opciones de despliegue
           wait_for_deployment: true
           use_existing_version_if_available: true
           
-          # Bucket S3 explícito
-          bucket_name: "elasticbeanstalk-us-east-2-467433242511"
+          # Bucket S3 explícito (parámetro correcto)
+          existing_bucket_name: "elasticbeanstalk-us-east-2-467433242511"
