@@ -197,6 +197,9 @@ def medicamentos_view(request):
         return redirect("login")
     meds = meds if isinstance(meds, list) else []
 
+    if not meds:
+        messages.warning(request, 'No se pudieron cargar los datos de los medicamentos. La API no devolvió información o no hay medicamentos registrados.')
+
     # KPIs
     total = len(meds)
     criticos = sum(1 for m in meds if (m.get("stock") or 0) < 10)

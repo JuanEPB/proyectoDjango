@@ -8,37 +8,23 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: 1. Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: 2. Create ZIP file for deployment
-        # Comprime el código de la aplicación, excluyendo archivos innecesarios.
-        # El archivo .ebextensions es crucial, así que se incluye.
-        run: zip -r deploy.zip . -x ".git/*" "venv/*" "__pycache__/*" "*.env" "docs/*" "README.md" "core (2).zip" "core.zip" "env/*"
+      - name: Create ZIP file
+        run: zip -r deploy.zip . -x "venv/*" "__pycache__/*" ".git/*" "*.env" "docs/*"
 
-      - name: 3. Deploy to Elastic Beanstalk
+      - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v21
         with:
-          # Credenciales IAM con permisos para EB y S3
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          
-          # Información de tu aplicación y entorno
-          application_name: "pharmacontrol"
-          environment_name: "Pharmacontrol-env"
+          application_name: "pharmacontrol-new"
+          environment_name: "Pharmacontrol-env-new"
           region: "us-east-2"
-          
-          # Versión siempre única para evitar conflictos
-          version_label: "deploy-${{ github.sha }}-${{ github.run_id }}"
-          
-          # Archivo a desplegar
+          version_label: "deploy-${{ github.sha }}"
           deployment_package: deploy.zip
-          
-          # Opciones de despliegue
           wait_for_deployment: true
           use_existing_version_if_available: true
-          
-          # Bucket S3 explícito (parámetro correcto)
-          existing_bucket_name: "elasticbeanstalk-us-east-2-467433242511"
