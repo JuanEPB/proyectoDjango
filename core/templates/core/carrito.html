@@ -1,0 +1,148 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Carrito · Pharmacontrol</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="{% static 'css/pharmacontrol.css' %}">
+</head>
+<body>
+
+<div class="submenu">
+  <div class="side-bar">
+    <div>
+      <div class="logo">Pharmacontrol</div>
+      <div class="list-menu1">
+        <div class="content"><i class="bi bi-house"></i><div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div></div>
+        <div class="content"><i class="bi bi-box"></i><div class="text"><a href="{% url 'inventory' %}">Inventario</a></div></div>
+        <div class="content"><i class="bi bi-files"></i><div class="text"><a href="{% url 'reports' %}">Reportes</a></div></div>
+        <div class="content"><i class="bi bi-people"></i><div class="text"><a href="{% url 'users' %}">Usuarios</a></div></div> 
+        <div class="content"><i class="bi bi-truck"></i><div class="text"><a href="{% url 'orders' %}">Pedidos</a></div></div>
+        <div class="content"><i class="bi bi-cart-check"></i><div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div></div>
+        <div class="content active"><i class="bi bi-cart3"></i><div class="text"><a href="{% url 'carrito' %}">Carrito</a></div></div>
+      </div>
+    </div>
+    <div class="list-menu-parent">
+      <div class="content"><i class="bi bi-gear"></i><div class="text"><a href="{% url 'settings' %}">Configuración</a></div></div>
+      <div class="content">
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit"><i class="bi bi-door-open"></i> Cerrar sesión</button></form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="appbar">
+  <div class="crumbs">Ventas / <b>Carrito</b></div>
+  <div class="spacer"></div>
+  <div class="search"><i class="bi bi-search"></i><input class="form-control form-control-sm" placeholder="Buscar medicamento…"></div>
+  <div class="user">
+    <div class="avatar"></div>
+    <span class="text-muted-2">Sesión activa</span>
+  </div>
+</div>
+
+<div class="contenido">
+  <div class="page-header">
+    <div>
+      <div class="title">Carrito de venta</div>
+      <div class="subtitle">Selecciona medicamentos del inventario y procesa la venta.</div>
+    </div>
+    <div class="filters">
+      <a class="btn-ghost {% if filtro == None %}active{% endif %}" href="{% url 'carrito' %}">Todos</a>
+      <a class="btn-ghost {% if filtro == 'con' %}active{% endif %}" href="?stock=con">Con stock</a>
+      <a class="btn-ghost {% if filtro == 'sin' %}active{% endif %}" href="?stock=sin">Sin stock</a>
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    <div class="card span-8">
+      <h4>Catálogo</h4>
+      {% if medicamentos %}
+        <div class="table-responsive" style="max-height:420px;overflow:auto;">
+          <table class="table table-striped table-bordered align-middle">
+            <thead class="table-light"><tr><th>Nombre</th><th>Stock</th><th>Precio</th><th style="width:140px">Agregar</th></tr></thead>
+            <tbody>
+              {% for m in medicamentos %}
+                <tr>
+                  <td>{{ m.nombre }}</td>
+                  <td>
+                    {% if m.stock|default:0 <= 0 %}<span class="chip danger">Sin stock</span>
+                    {% elif m.stock < 10 %}<span class="chip warn">Bajo ({{ m.stock }})</span>
+                    {% else %}<span class="chip ok">{{ m.stock }}</span>{% endif %}
+                  </td>
+                  <td>${{ m.precio|floatformat:2 }}</td>
+                  <td>
+                    <form method="post" action="{% url 'agregar_al_carrito' m.id %}" class="d-flex align-items-center gap-2">{% csrf_token %}
+                      <input type="number" name="cantidad" min="1" value="1" class="form-control form-control-sm" style="max-width:90px">
+                      <button class="btn-brand btn-sm"><i class="bi bi-cart-plus"></i></button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <nav class="mt-2">
+          <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtro %}&stock={{ filtro }}{% endif %}">&laquo;</a></li>
+            {% else %}<li class="page-item disabled"><span class="page-link">&laquo;</span></li>{% endif %}
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+              {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}{% if filtro %}&stock={{ filtro }}{% endif %}">{{ num }}</a></li>
+              {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtro %}&stock={{ filtro }}{% endif %}">&raquo;</a></li>
+            {% else %}<li class="page-item disabled"><span class="page-link">&raquo;</span></li>{% endif %}
+          </ul>
+        </nav>
+      {% else %}
+        <div class="empty"><div class="icon">📦</div><div>No hay medicamentos en el catálogo.</div></div>
+      {% endif %}
+    </div>
+
+    <div class="card span-4">
+      <h4>Resumen de compra</h4>
+      {% if compra_exitosa %}<div class="alert alert-success py-2">¡Compra realizada con éxito!</div>{% endif %}
+      {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
+
+      {% if carrito %}
+        <ul class="list-group mb-2">
+          {% for item in carrito %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-semibold">{{ item.nombre }}</div>
+                <div class="text-muted-2" style="font-size:12px">{{ item.cantidad }} × ${{ item.precio|floatformat:2 }}</div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <div class="fw-semibold">${{ item.total|floatformat:2 }}</div>
+                <form method="post" action="{% url 'quitar_del_carrito' item.id %}">{% csrf_token %}
+                  <button class="btn btn-sm btn-ghost text-danger"><i class="bi bi-x-circle"></i></button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold">Total</div>
+          <div class="fs-5">${{ total_carrito|floatformat:2 }}</div>
+        </div>
+        <form method="post" action="{% url 'realizar_compra' %}">{% csrf_token %}
+          <button class="btn-brand w-100"><i class="bi bi-credit-card-2-front"></i> Procesar compra</button>
+        </form>
+      {% else %}
+        <div class="empty"><div class="icon">🛒</div><div>Tu carrito está vacío.</div></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

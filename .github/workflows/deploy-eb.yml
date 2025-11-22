@@ -1,0 +1,45 @@
+name: Deploy Django to Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 1. Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 2. Create ZIP file for deployment
+        # Comprime el código de la aplicación, excluyendo archivos innecesarios.
+        # El archivo .ebextensions es crucial, así que se incluye.
+        run: zip -r deploy.zip . -x ".git/*" "venv/*" "__pycache__/*" "*.env" "docs/*" "README.md" "core (2).zip" "core.zip" "env/*"
+
+      - name: 3. Deploy to Elastic Beanstalk
+        # Usa una action de la comunidad para simplificar el despliegue
+        uses: einaregilsson/beanstalk-deploy@v21
+        with:
+          # Credenciales de AWS (configúralas como Secrets en GitHub)
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          
+          # Nombre de tu aplicación en Elastic Beanstalk
+          application_name: "pharmacontrol"
+          
+          # Nombre del entorno de tu aplicación
+          environment_name: "Pharmacontrol-env"
+          
+          # Región de AWS donde está tu entorno
+          region: "us-east-2"
+          
+          # Etiqueta de la versión que se creará en EB
+          version_label: "deploy-${{ github.sha }}"
+          
+          # Paquete a desplegar
+          deployment_package: deploy.zip
+
+          # Opcional: Esperar a que el despliegue termine
+          wait_for_deployment: true

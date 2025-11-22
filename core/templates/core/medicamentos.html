@@ -1,412 +1,265 @@
+{% extends "core/base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="initial-scale=1, width=device-width">
-    <link rel="stylesheet" href="{% static 'css/index.css' %}">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-</head>
-<body>
-    <div class="container">
-        <div class="side-bar">
-            <div class="top-parent">
-                <div class="top">
-                    <div class="logo">
-                        <div class="pharmacontrol">Pharmacontrol</div>
-                    </div>
-                </div>
-                <div class="list-menu">
-                    <div class="list-menu1">
-                        <div class="list-menu2">
-                            <div class="content">
-                                <i class="bi bi-house"></i>
-                                <div class="text">
-                                    <a href="{% url 'medicamentos'%}"> Dashobard</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-box"></i>
-                                <div class="text">
-                                    <a href="{% url 'inventory'%}"> Inventario</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-files"></i>
-                                <div class="text">
-                                    <a href="{% url 'reports'%}"> Reportes</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-people"></i>
-                                <div class="text">
-                                    <a href="{% url 'users'%}"> Usuarios</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-truck"></i>
-                                <div class="text">
-                                    <a href="{% url 'orders'%}"> Pedidos</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-menu3">
-                            <div class="content">
-                                <i class="bi bi-cart-check"></i>
-                                <div class="text">
-                                    <a href="{% url 'suppliers'%}"> Proveedores</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="list-menu-parent">
-                <div class="list-menu8">
-                    <div class="content">
-                        <i class="bi bi-gear"></i>
-                        <div class="text">
-                            <p><a href="{% url 'settings'%}"> Configuración</a></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="list-menu8">
-                    <div class="content">
-                        <form method="post" action="{% url 'logout' %}">
-                            {% csrf_token %}
-                            <div class="text">
-                                <button type="submit"> <i class="bi bi-door-open"></i>Cerrar sesión</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="main-content">
-            <div class="top-bar"></div>
-            <div class="search-bar-parent">
-                <div class="search-bar">
-                    <img class="home-icon" alt="" src="Search.svg">
-                    <div class="search-product-supplier">Search product, supplier, order</div>
-                </div>
-                <div class="notification-parent">
-                    <i class="bi bi-bell"></i>
-                    {% comment %} imagen de usuario {% endcomment %}
-                </div>
-            </div>
-            <div class="notification-group">
-                <i class="bi bi-bell"></i>
-                {% comment %} imagen de usuario {% endcomment %}
-            </div>
-            <div class="sales-overview">
-                <div class="inventory-summary">Sales Overview</div>
-                <div class="sales">
-                    <img class="sales-icon" alt="" src="Sales.svg">
-                    <div class="sales-inner">
-                        <div class="parent">
-                            <div class="div">₹ 832</div>
-                            <div class="sales1">Sales</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="sales-overview-child"></div>
-                <div class="sales-overview-item"></div>
-                <div class="sales-overview-inner"></div>
-                <div class="revenue">
-                    <img class="sales-icon" alt="" src="Revenue.svg">
-                    <div class="sales-inner">
-                        <div class="parent">
-                            <div class="div">₹ 18,300</div>
-                            <div class="sales1">Revenue</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="profit">
-                    <img class="sales-icon" alt="" src="Profit.svg">
-                    <div class="sales-inner">
-                        <div class="parent">
-                            <div class="div">₹ 868</div>
-                            <div class="profit1">Profit</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="cost">
-                    <img class="sales-icon" alt="" src="Cost.svg">
-                    <div class="cost-inner">
-                        <div class="parent">
-                            <div class="div">₹ 17,432</div>
-                            <div class="sales1">Cost</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="purchase-overview">
-                <div class="inventory-summary">Purchase Overview</div>
-                <div class="sales">
-                    <img class="sales-icon" alt="" src="Purchase.svg">
-                    <div class="cost-inner">
-                        <div class="parent1">
-                            <div class="div">82</div>
-                            <div class="sales1">Purchase</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="purchase-overview-child"></div>
-                <div class="purchase-overview-item"></div>
-                <div class="purchase-overview-inner"></div>
-                <div class="cancel">
-                    <img class="sales-icon" alt="" src="Cancel.svg">
-                    <div class="cost-inner">
-                        <div class="parent">
-                            <div class="div">5</div>
-                            <div class="sales1">Cancel</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="cost2">
-                    <img class="sales-icon" alt="" src="Cost.svg">
-                    <div class="cost-child">
-                        <div class="parent1">
-                            <div class="div">₹ 13,573</div>
-                            <div class="profit1">Cost</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="cost">
-                    <img class="sales-icon" alt="" src="Profit.svg">
-                    <div class="sales-inner">
-                        <div class="parent4">
-                            <div class="div">₹17,432</div>
-                            <div class="sales1">Return</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="sales-overview2">
-                <div class="inventory-summary">Inventory Summary</div>
-                <div class="quantity-parent">
-                    <img class="sales-icon" alt="" src="Quantity.svg">
-                    <div class="parent5">
-                        <div class="div">868</div>
-                        <div class="quantity-in-hand">Quantity in Hand</div>
-                    </div>
-                </div>
-                <div class="on-the-way-parent">
-                    <img class="sales-icon" alt="" src="On the way.svg">
-                    <div class="parent5">
-                        <div class="div">200</div>
-                        <div class="quantity-in-hand">To be received</div>
-                    </div>
-                </div>
-                <div class="line-div"></div>
-            </div>
-            <div class="product-summary">
-                <div class="inventory-summary">Product Summary</div>
-                <div class="suppliers">
-                    <img class="sales-icon" alt="" src="Suppliers.svg">
-                    <div class="parent5">
-                        <div class="div">31</div>
-                        <div class="quantity-in-hand">Number of Suppliers</div>
-                    </div>
-                </div>
-                <div class="categories">
-                    <img class="sales-icon" alt="" src="Categories.svg">
-                    <div class="parent5">
-                        <div class="div">21</div>
-                        <div class="quantity-in-hand">Number of Categories</div>
-                    </div>
-                </div>
-                <div class="product-summary-child"></div>
-            </div>
-            <div class="dashboard-child"></div>
-            <div class="div12">0</div>
-            <div class="month">
-                <div class="jan">Jan</div>
-                <div class="jan">Feb</div>
-                <div class="jan">Mar</div>
-                <div class="jan">Apr</div>
-                <div class="jan">May</div>
-            </div>
-            <div class="orders">
-                <div class="jan">4000</div>
-                <div class="jan">3000</div>
-                <div class="jan">2000</div>
-                <div class="jan">1000</div>
-            </div>
-            <div class="order-summary">Order Summary</div>
-            <div class="sales-purchase">
-                <div class="sales-purchase1">Sales & Purchase</div>
-                <div class="lines">
-                    <img class="lines-child" alt="" src="Vector 6.svg">
-                    <img class="lines-child" alt="" src="Vector 5.svg">
-                    <img class="lines-child" alt="" src="Vector 4.svg">
-                    <img class="lines-child" alt="" src="Vector 3.svg">
-                    <img class="lines-child" alt="" src="Vector 2.svg">
-                    <img class="lines-child" alt="" src="Vector 1.svg">
-                </div>
-                <div class="graph">
-                    <div class="rectangle-parent">
-                        <div class="frame-child"></div>
-                        <div class="frame-item"></div>
-                    </div>
-                    <div class="rectangle-parent">
-                        <div class="frame-inner"></div>
-                        <div class="rectangle-div"></div>
-                    </div>
-                    <div class="rectangle-parent">
-                        <div class="frame-child1"></div>
-                        <div class="frame-child2"></div>
-                    </div>
-                    <div class="rectangle-parent">
-                        <div class="frame-child3"></div>
-                        <div class="frame-child4"></div>
-                    </div>
-                    <div class="rectangle-parent2">
-                        <div class="frame-child5"></div>
-                        <div class="frame-child6"></div>
-                    </div>
-                    <div class="rectangle-parent2">
-                        <div class="frame-child7"></div>
-                        <div class="frame-child8"></div>
-                    </div>
-                    <div class="rectangle-parent2">
-                        <div class="frame-child"></div>
-                        <div class="frame-item"></div>
-                    </div>
-                    <div class="rectangle-parent2">
-                        <div class="frame-child1"></div>
-                        <div class="frame-child12"></div>
-                    </div>
-                    <div class="rectangle-parent2">
-                        <div class="frame-child1"></div>
-                        <div class="frame-child4"></div>
-                    </div>
-                    <div class="rectangle-parent2">
-                        <div class="frame-child3"></div>
-                        <div class="frame-child4"></div>
-                    </div>
-                </div>
-                <div class="amount">
-                    <div class="jan">60,000</div>
-                    <div class="jan">50,000</div>
-                    <div class="jan">40,000</div>
-                    <div class="jan">30,000</div>
-                    <div class="jan">20,000</div>
-                    <div class="jan">10,000</div>
-                </div>
-                <div class="month1">
-                    <div class="jun">Jan</div>
-                    <div class="feb1">Feb</div>
-                    <div class="feb1">Mar</div>
-                    <div class="apr1">Apr</div>
-                    <div class="may1">May</div>
-                    <div class="jun">Jun</div>
-                    <div class="jul">Jul</div>
-                    <div class="aug">Aug</div>
-                    <div class="may1">May</div>
-                    <div class="jun">Jun</div>
-                </div>
-                <div class="purchase2">Purchase</div>
-                <div class="sales2">Sales</div>
-                <div class="sales-purchase-child"></div>
-                <div class="sales-purchase-item"></div>
-                <div class="button">
-                    <img class="calendar-icon" alt="" src="Calendar.svg">
-                    <div class="text8">Weekly</div>
-                </div>
-            </div>
-            <div class="data">
-                <div class="vertical">
-                    <div class="lines1">
-                        <div class="lines-child3"></div>
-                        <div class="lines-child4"></div>
-                        <div class="lines-child5"></div>
-                        <div class="lines-child6"></div>
-                        <div class="lines-child7"></div>
-                        <div class="lines-child8"></div>
-                    </div>
-                </div>
-                <img class="lines-icon" alt="" src="Lines.svg">
-            </div>
-            <div class="dashboard-item"></div>
-            <div class="dashboard-inner"></div>
-            <div class="ordered">Ordered</div>
-            <div class="delivered">Delivered</div>
-            <div class="dashboard-inner1">
-                <div class="frame-child17"></div>
-            </div>
-            <div class="low-quantity-stock">Low Quantity  Stock</div>
-            <div class="rectangle-parent8">
-                <img class="rectangle-icon" alt="" src="Rectangle 72.png">
-                <div class="lays-parent">
-                    <div class="div">Lays</div>
-                    <div class="remaining-quantity">Remaining Quantity : 15 Packet</div>
-                </div>
-                <div class="badge">
-                    <div class="badge1">
-                        <div class="text9">Low</div>
-                    </div>
-                </div>
-            </div>
-            <div class="rectangle-parent9">
-                <img class="rectangle-icon" alt="" src="Rectangle 78.png">
-                <div class="lays-parent">
-                    <div class="div">Lays</div>
-                    <div class="remaining-quantity">Remaining Quantity : 15 Packet</div>
-                </div>
-                <div class="badge">
-                    <div class="badge1">
-                        <div class="text9">Low</div>
-                    </div>
-                </div>
-            </div>
-            <div class="rectangle-parent10">
-                <img class="rectangle-icon" alt="" src="Rectangle 71.png">
-                <div class="lays-parent">
-                    <div class="div">Tata Salt</div>
-                    <div class="remaining-quantity">Remaining Quantity : 10 Packet</div>
-                </div>
-                <div class="badge">
-                    <div class="badge1">
-                        <div class="text9">Low</div>
-                    </div>
-                </div>
-            </div>
-            <div class="see-all">See All</div>
-            <div class="top-selling-stock">
-                <div class="inventory-summary">Top Selling Stock</div>
-                <div class="name">Name</div>
-                <div class="sold-quantity">Sold Quantity</div>
-                <div class="price">Price</div>
-                <div class="remaining-quantity3">Remaining Quantity</div>
-                <div class="surf-excel">Surf Excel</div>
-                <div class="rin">Rin</div>
-                <div class="parle-g">Parle G</div>
-                <div class="div23">30</div>
-                <div class="div24">21</div>
-                <div class="div25">19</div>
-                <div class="div26">12</div>
-                <div class="div27">15</div>
-                <div class="div28">17</div>
-                <div class="div29">₹ 100</div>
-                <div class="div30">₹ 207</div>
-                <div class="div31">₹ 105</div>
-                <div class="see-all1">See All</div>
-                <img class="top-selling-stock-child" alt="" src="Vector 41.svg">
-                <img class="top-selling-stock-item" alt="" src="Vector 42.svg">
-                <img class="top-selling-stock-inner" alt="" src="Vector 43.svg">
-                <img class="top-selling-stock-child1" alt="" src="Vector 44.svg">
-            </div>
-        </div>
+
+{% block title %}Dashboard · Pharmacontrol{% endblock %}
+
+{% block content %}
+
+<div class="appbar">
+  <div class="crumbs">Pharmacontrol / <b>Dashboard</b></div>
+  <div class="spacer"></div>
+
+  <div class="appbar-search position-relative" style="min-width:340px;">
+    <i class="bi bi-search position-absolute" style="left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"></i>
+    <input
+      id="global-search"
+      type="search"
+      class="form-control form-control-sm ps-4"
+      placeholder="Buscar medicamentos, proveedores, pedidos o ventas…"
+      aria-label="Buscar en el inventario"
+      role="combobox"
+      aria-expanded="false"
+      aria-autocomplete="list"
+      aria-controls="global-results"
+      autocomplete="off"
+      data-url="{% url 'search_inventory' %}"
+    >
+    <div
+      id="global-results"
+      role="listbox"
+      class="list-group shadow-sm"
+      style="position:absolute;top:100%;left:0;right:0;z-index:1050;display:none;max-height:360px;overflow:auto;border-radius:0.75rem;"
+    ></div>
+  </div>
+
+  <div class="user">
+    <div class="avatar"></div>
+    <span class="text-muted-2">Sesión activa</span>
+  </div>
+</div>
+
+  <div class="page-header">
+    <div class="title">Dashboard</div>
+    <div class="filters">
+
+
     </div>
-</body>
-</html>
+  </div>
+
+
+  <div class="kpi-grid">
+    <div class="kpi badge-up"><div class="kpi-label">Total Medicamentos</div><div id="kpi-total" class="kpi-value">0</div><div class="kpi-trend trend-up">Operativo</div></div>
+    <div class="kpi badge-warn"><div class="kpi-label">Stock Crítico (&lt; 10)</div><div id="kpi-criticos" class="kpi-value">0</div><div class="kpi-trend trend-warn">Reponer pronto</div></div>
+    <div class="kpi badge-down"><div class="kpi-label">Caducados</div><div id="kpi-caducados" class="kpi-value">0</div><div class="kpi-trend trend-down">Revisión urgente</div></div>
+    <div class="kpi"><div class="kpi-label">Órdenes Pendientes</div><div id="kpi-ordenes" class="kpi-value">0</div><div class="kpi-trend">En seguimiento</div></div>
+  </div>
+
+  <div class="cards-grid">
+    <div class="card span-4"><h4>Resumen General</h4><div class="chart-wrap"><canvas id="graficaResumen"></canvas></div></div>
+    <div class="card span-4"><h4>Stock por Medicamento</h4><div class="chart-wrap"><canvas id="graficaStock"></canvas></div></div>
+    <div class="card span-4"><h4>Medicamentos por Categoría</h4><div class="chart-wrap"><canvas id="graficaCategorias"></canvas></div></div>
+    <div class="card span-6"><h4>Rotación (salidas) por Categoría</h4><div class="chart-wrap"><canvas id="graficaRotacion"></canvas></div></div>
+    <div class="card span-6"><h4>Vencimientos Próximos (30/60/90 días)</h4><div class="chart-wrap"><canvas id="graficaVencimientos"></canvas></div></div>
+  </div>
+
+  <div class="table-card">
+    <h4 class="mb-2" style="color:var(--brand)">Lista de Medicamentos</h4>
+    <div class="table-responsive" style="max-height: 420px; overflow:auto;">
+      <table class="table table-striped table-bordered align-middle">
+        <thead class="table-light">
+          <tr><th>ID</th><th>Nombre</th><th>Lote</th><th>Caducidad</th><th>Proveedor</th><th>Stock</th><th>Precio</th><th>Categoría</th></tr>
+        </thead>
+        <tbody id="tabla-meds"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    window.__DATA__ = {{ chart_data_json|safe }};
+    window.__MEDS__ = {{ meds_json|safe }};
+  </script>
+  <script src="{% static 'js/dashboard.js' %}"></script>
+
+  <!-- Tu buscador global (puedes dejar el que ya tienes) -->
+  <script>
+    // usa data-url y tu render actual de resultados...
+  </script>
+
+  <!-- Render de gráficas y tabla (seguro, sin fallar si falta algo) -->
+  <script>
+  (function(){
+    // Helper seguro
+    const D = window.__DATA__ || {};
+    const M = Array.isArray(window.__MEDS__) ? window.__MEDS__ : [];
+
+    // 1) KPI
+    try {
+      const resumen = D.resumen || {};
+      document.getElementById('kpi-total').textContent     = (M.length || 0);
+      document.getElementById('kpi-criticos').textContent  = (resumen.criticos || 0);
+      document.getElementById('kpi-caducados').textContent = (resumen.caducados || 0);
+      document.getElementById('kpi-ordenes').textContent   = 0; // si aún no tienes conteo real
+    } catch(e){ console.warn('KPI warn', e); }
+
+    // 2) Tabla de medicamentos
+    try {
+      const $tb = document.getElementById('tabla-meds');
+      if ($tb && M.length){
+        $tb.innerHTML = M.map(m => `
+          <tr>
+            <td>${m.id ?? ''}</td>
+            <td>${m.nombre ?? ''}</td>
+            <td>${m.lote ?? ''}</td>
+            <td>${m.caducidad ?? ''}</td>
+            <td>${(m.proveedor && m.proveedor.nombre) ? m.proveedor.nombre : (m.proveedor ?? '')}</td>
+            <td>${m.stock ?? 0}</td>
+            <td>${(m.precio!=null) ? ('$' + Number(m.precio).toFixed(2)) : '$0.00'}</td>
+            <td>${(m.categoria && m.categoria.nombre) ? m.categoria.nombre : (m.categoria ?? 'Sin categoría')}</td>
+          </tr>
+        `).join('');
+      }
+    } catch(e){ console.warn('Tabla warn', e); }
+
+    // 3) Gráfica: Stock por Medicamento (usa top que ya preparaste en __DATA__)
+    try {
+      const ctx = document.getElementById('graficaStock')?.getContext('2d');
+      if (ctx) {
+        const stockTop = D.stockTop || { labels: [], values: [] };
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: stockTop.labels || [],
+            datasets: [{
+              label: 'Stock',
+              data: stockTop.values || [],
+              backgroundColor: 'rgba(75, 192, 192, 0.5)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+      }
+    } catch(e){ console.warn('Chart stock warn', e); }
+
+    // 4) Otras gráficas (si ya mandas datos)
+    try {
+      const resumenCanvas = document.getElementById('graficaResumen')?.getContext('2d');
+      if (resumenCanvas && D.resumen) {
+        const r = D.resumen;
+        new Chart(resumenCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['Disponibles', 'Críticos', 'Caducados'],
+            datasets: [{ data: [r.disponibles||0, r.criticos||0, r.caducados||0] }]
+          }
+        });
+      }
+    } catch(e){ console.warn('Chart resumen warn', e); }
+
+    try {
+      const catCanvas = document.getElementById('graficaCategorias')?.getContext('2d');
+      if (catCanvas && D.categorias) {
+        new Chart(catCanvas, {
+          type: 'bar',
+          data: { labels: D.categorias.labels||[], datasets: [{ label: 'Categorías', data: D.categorias.values||[] }] }
+        });
+      }
+    } catch(e){ console.warn('Chart categorias warn', e); }
+
+    try {
+      const rotCanvas = document.getElementById('graficaRotacion')?.getContext('2d');
+      if (rotCanvas && D.rotacion) {
+        new Chart(rotCanvas, {
+          type: 'line',
+          data: { labels: D.rotacion.labels||[], datasets: [{ label: 'Rotación', data: D.rotacion.values||[] }] }
+        });
+      }
+    } catch(e){ console.warn('Chart rotacion warn', e); }
+
+    try {
+      const vCanvas = document.getElementById('graficaVencimientos')?.getContext('2d');
+      if (vCanvas && D.vencimientos) {
+        const v = D.vencimientos;
+        new Chart(vCanvas, {
+          type: 'bar',
+          data: { labels: ['30 días','60 días','90 días'], datasets: [{ label: 'Vencimientos', data: [v.d30||0,v.d60||0,v.d90||0] }] }
+        });
+      }
+    } catch(e){ console.warn('Chart vencimientos warn', e); }
+  })();
+  </script>
+
+  <!-- Tu archivo principal -->
+  <script src="{% static 'js/dashboard.js' %}"></script>
+
+  <!-- Buscador (usa la URL del data-atributo) -->
+  <script>
+  (() => {
+    const $inp = document.getElementById('global-search');
+    const $box = document.getElementById('global-results');
+    if(!$inp || !$box) return;
+
+    const debounce = (fn, ms=250) => { let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); } };
+    let activeIndex = -1;
+    const url = $inp.dataset.url || '/inventario/search';
+
+    function hideBox(){ $box.style.display='none'; $box.innerHTML=''; activeIndex=-1; $inp.setAttribute('aria-expanded','false'); }
+    function showBox(){ if($box.innerHTML.trim()){ $box.style.display='block'; $inp.setAttribute('aria-expanded','true'); } }
+    function badgeClass(type){ return ({Medicamento:'bg-primary',Proveedor:'bg-success',Pedido:'bg-warning text-dark',Venta:'bg-info text-dark'})[type] || 'bg-secondary'; }
+    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+
+    function render(items){
+      if(!items.length){ hideBox(); return; }
+      $box.innerHTML = items.map((r,i)=> `
+        <a id="opt-${i}" role="option" href="${r.url}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start" data-idx="${i}">
+          <div class="ms-2 me-auto">
+            <div class="fw-semibold">
+              <span class="badge rounded-pill ${badgeClass(r.type)} me-2">${r.type}</span>${escapeHtml(r.label)}
+            </div>
+            <small class="text-muted">${escapeHtml(r.sub || '')}</small>
+          </div>
+          ${r.extra ? `<span class="badge bg-light text-dark border">${escapeHtml(r.extra)}</span>` : ''}
+        </a>
+      `).join('');
+      showBox();
+    }
+
+    const doSearch = debounce(async (q) => {
+      if(!q || q.trim().length < 2){ hideBox(); return; }
+      try {
+        const resp = await fetch(`${url}?q=${encodeURIComponent(q.trim())}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if(!resp.ok) throw new Error('HTTP '+resp.status);
+        const data = await resp.json();
+        render(data.results || []);
+      } catch(e){ console.error('Search error', e); hideBox(); }
+    });
+
+    $inp.addEventListener('input', e => doSearch(e.target.value));
+    $inp.addEventListener('focus', ()=> { if($box.innerHTML.trim()) showBox(); });
+    document.addEventListener('click', (e)=> { if(!( $box.contains(e.target) || $inp.contains(e.target) )) hideBox(); });
+
+    $inp.addEventListener('keydown', (e)=>{
+      const links = [...$box.querySelectorAll('a.list-group-item')];
+      if(!links.length) return;
+      if(e.key === 'ArrowDown'){ e.preventDefault(); activeIndex = (activeIndex+1) % links.length; highlight(links); }
+      if(e.key === 'ArrowUp'){ e.preventDefault(); activeIndex = (activeIndex-1+links.length) % links.length; highlight(links); }
+      if(e.key === 'Enter'){ if(activeIndex>=0){ e.preventDefault(); links[activeIndex].click(); } }
+      if(e.key === 'Escape'){ hideBox(); }
+    });
+
+    function highlight(links){
+      links.forEach(a=>a.classList.remove('active'));
+      if(activeIndex>=0 && links[activeIndex]) {
+        links[activeIndex].classList.add('active');
+        $inp.setAttribute('aria-activedescendant', `opt-${activeIndex}`);
+        links[activeIndex].scrollIntoView({ block:'nearest' });
+      }
+    }
+  })();
+  </script>
+{% endblock %}

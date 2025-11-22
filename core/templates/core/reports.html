@@ -1,93 +1,125 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  	<meta charset="utf-8">
-  	<meta name="viewport" content="initial-scale=1, width=device-width">
-  	
-    <link rel="stylesheet" href="{% static 'css/index.css' %}">
-  	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Reportes · Pharmacontrol</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="{% static 'css/pharmacontrol.css' %}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
 </head>
 <body>
-    <div class="dashboard">
-                <div class="side-bar">
-                    <div class="top-parent">
-                            <div class="top">
-                                <div class="logo">
-                                        <div class="pharmacontrol">Pharmacontrol</div>
-                                </div>
-                            </div>
-                            <div class="list-menu">
-                                <div class="list-menu1">
-                                        <div class="list-menu2">
-                                            <div class="content">
-                                                    <i class="bi bi-house"></i>
-                                                    
-                                                    <div class="text">
-                                                    <a href=""> Dashobard</a>
-                                                    </div>
-                                            </div>
-                                        </div>
-                                        <div class="list-menu3">
-                                            <div class="content">
-                                                    <i class="bi bi-box"></i>
-                                                    
-                                                    <div class="text">Inventario</div>
-                                            </div>
-                                        </div>
-                                        <div class="list-menu3">
-                                            <div class="content">
-                                                    <i class="bi bi-files"></i>
-                                                    
-                                                    <div class="text">Reports</div>
-                                            </div>
-                                        </div>
-                                        <div class="list-menu3">
-                                            <div class="content">
-                                                    <i class="bi bi-people"></i>
-                                                    
-                                                    <div class="text">Usuarios</div>
-                                            </div>
-                                        </div>
-                                        <div class="list-menu3">
-                                            <div class="content">
-                                                    <i class="bi bi-truck"></i>
-                                                    
-                                                    <div class="text">Pedidos</div>
-                                            </div>
-                                        </div>
-                                        <div class="list-menu3">
-                                            <div class="content">
-                                                    <i class="bi bi-cart-check"></i>
-                                                    
-                                                    <div class="text">Proveedores</div>
-                                            </div>
-                                        </div>
-                                </div>
-                            </div>
-                    </div>
-                    <div class="list-menu-parent">
-                            <div class="list-menu8">
-                                <div class="content">
-                                        <i class="bi bi-gear"></i>
-                                        
-                                        <div class="text">Settings</div>
-                                </div>
-                            </div>
-                            <div class="list-menu8">
-                                <div class="content">
-                                        <i class="bi bi-door-open"></i>
-                                        
-                                        <div class="text">Log Out</div>
-                                </div>
-                            </div>
-                        </div>
-            
-                    </div>
-                </div>
-            </div>
-        </div>
+
+<!-- Sidebar -->
+<div class="submenu">
+  <div class="side-bar">
+    <div>
+      <div class="logo">Pharmacontrol</div>
+      <div class="list-menu1">
+        <div class="content"><i class="bi bi-house"></i><div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div></div>
+        <div class="content"><i class="bi bi-box"></i><div class="text"><a href="{% url 'inventory' %}">Inventario</a></div></div>
+        <div class="content active"><i class="bi bi-files"></i><div class="text"><a href="{% url 'reports' %}">Reportes</a></div></div>
+        <div class="content"><i class="bi bi-people"></i><div class="text"><a href="{% url 'users' %}">Usuarios</a></div></div>
+        <div class="content"><i class="bi bi-truck"></i><div class="text"><a href="{% url 'orders' %}">Pedidos</a></div></div>
+        <div class="content"><i class="bi bi-cart-check"></i><div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div></div>
+        <div class="content"><i class="bi bi-cart3"></i><div class="text"><a href="{% url 'carrito' %}">Carrito</a></div></div>
+      </div>
     </div>
-</body>
-</html>
+    <div class="list-menu-parent">
+      <div class="content"><i class="bi bi-gear"></i><div class="text"><a href="{% url 'settings' %}">Configuración</a></div></div>
+      <div class="content">
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+          <button type="submit"><i class="bi bi-door-open"></i> Cerrar sesión</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Appbar -->
+<div class="appbar">
+  <div class="crumbs">Análisis / <b>Reportes</b></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <i class="bi bi-calendar3"></i>
+    <select id="rep-periodo" class="form-control form-control-sm" style="background:transparent;border:none;outline:none;">
+      <option value="30">Últimos 30 días</option>
+      <option value="90">Últimos 90 días</option>
+      <option value="365">Último año</option>
+    </select>
+  </div>
+  <div class="user"><div class="avatar"></div><span class="text-muted-2">Sesión activa</span></div>
+</div>
+
+<!-- Contenido -->
+<div class="contenido">
+  <div class="page-header">
+    <div>
+      <div class="title">Reportes</div>
+      <div class="subtitle">Reporte IA y métricas de ventas, con el último movimiento a la vista.</div>
+    </div>
+    <div class="filters">
+      <button id="btn-refrescar" class="btn-ghost"><i class="bi bi-arrow-repeat"></i> Actualizar</button>
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    <!-- Card 1: Reporte IA -->
+    <div class="card span-8" id="card-ia">
+      <h4>Reporte por IA</h4>
+      <iframe id="iframe-ia" src="http://127.0.0.1:8000/" style="width:100%;height:500px;border:none;"></iframe>
+    </div>
+
+    <!-- Card 2: Ventas -->
+    <div class="card span-4" id="card-ventas">
+      <h4>Ventas (periodo)</h4>
+      <div id="ventas-loading" class="skeleton" style="height:120px;border-radius:12px;"></div>
+      <div id="ventas-content" style="display:none">
+        <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin:0">
+          <div class="kpi badge-up"><div class="kpi-label">Total vendido</div><div class="kpi-value" id="ven-total">$0</div></div>
+          <div class="kpi"><div class="kpi-label">Tickets</div><div class="kpi-value" id="ven-tickets">0</div></div>
+          <div class="kpi"><div class="kpi-label">Promedio ticket</div><div class="kpi-value" id="ven-prom">$0</div></div>
+          <div class="kpi"><div class="kpi-label">Artículos</div><div class="kpi-value" id="ven-items">0</div></div>
+        </div>
+        <div class="chart-wrap" style="height:140px;margin-top:8px">
+          <canvas id="venChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Columna lateral: últimos -->
+    <div class="card span-6">
+      <h4>Última venta</h4>
+      <div id="ult-venta" class="text-muted-2">Cargando…</div>
+      <!-- Ejemplo de item -->
+<a class="list-group-item d-flex justify-content-between align-items-center">
+  <span><strong>{{ folio }}</strong> <small class="text-muted">{{ fecha }}</small></span>
+  <div class="btn-group btn-group-sm">
+    <!-- dentro de “Última venta” -->
+<button class="btn btn-ghost" data-ticket-id="{{id}}">Descargar ticket</button>
+
+  </div>
+</a>
+
+    </div>
+<div class="card span-6">
+  <h4>Últimos reportes IA (PDF)</h4>
+  <div id="ultimos-ia" class="text-muted-2">Cargando…</div>
+</div>
+
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="{% static 'js/dashboard.js' %}?v=5" defer></script>
+<script>
+  (function boot(){
+    const run = () => window.initReportsPage && window.initReportsPage();
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+    else run();
+  })();
+</script>

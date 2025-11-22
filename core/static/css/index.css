@@ -1304,3 +1304,14 @@ html, body {
   overflow: auto;
   padding: 20px;
 }
+.sales-overview4 {
+  	position: absolute;
+  	top: 122px;
+  	left: 312px;
+  	border-radius: 8px;
+  	background-color: #fff;
+  	width: 690px;
+  	height: 400px;
+  	overflow: hidden;
+  	color: #5d6679;
+}
