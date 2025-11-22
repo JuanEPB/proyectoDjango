@@ -19,7 +19,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-secret")
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
 # Hosts
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,.elasticbeanstalk.com").split(",")
 
 # CSRF / cookies
 CSRF_TRUSTED_ORIGINS = os.getenv(
