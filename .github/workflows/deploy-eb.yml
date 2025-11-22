@@ -43,3 +43,5 @@ jobs:
 
           # Opcional: Esperar a que el despliegue termine
           wait_for_deployment: true
+          use_existing_version_if_available: true
+
