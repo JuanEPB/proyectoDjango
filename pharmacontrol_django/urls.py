@@ -6,9 +6,14 @@ from core import views as core  # usamos alias para evitar confusiones
 urlpatterns = [
     path('admin/', admin.site.urls),
 
+    # Public Pages
+    path('', core.home_view, name='home'),
+    path('register/', core.register_view, name='register'),  # Placeholder
+
     # Auth
     path('login/', core.login_view, name='login'),
     path('logout/', core.logout_view, name='logout'),
+    path('contact/', core.contact_view, name='contact'),
 
     # Dashboard / Medicamentos
     path('medicamentos/', core.medicamentos_view, name='medicamentos'),  # alias a medicamentos_view

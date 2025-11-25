@@ -17,6 +17,8 @@ from django.db.models import Q
 
 from django.conf import settings
 from api_client import API_BASE_URL  
+from django.core.mail import send_mail
+from django.core.mail import BadHeaderError
 
 # =========================
 # Config
@@ -174,6 +176,52 @@ def bridge_store_token(request):
 def bridge_clear_token(request):
     request.session.pop("jwt", None)
     return JsonResponse({"ok": True})
+
+
+# =========================
+# Public Pages (Home, etc.)
+# =========================
+def home_view(request):
+    """
+    Renderiza la página de inicio pública (landing page).
+    """
+    return render(request, "core/home.html")
+
+
+@require_POST
+def contact_view(request):
+    """Procesa el formulario de contacto público y envía un email al administrador."""
+    name = (request.POST.get('name') or '').strip()
+    email = (request.POST.get('email') or '').strip()
+    message = (request.POST.get('message') or '').strip()
+
+    if not (name and email and message):
+        messages.error(request, 'Por favor completa todos los campos del formulario de contacto.')
+        return redirect('home')
+
+    subject = f"Contacto Pharmacontrol: {name}"
+    body = f"Nombre: {name}\nEmail: {email}\n\nMensaje:\n{message}"
+    recipient = ['jpina7722@gmail.com']
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or email or 'webmaster@localhost'
+
+    try:
+        send_mail(subject, body, from_email, recipient, fail_silently=False)
+        messages.success(request, 'Gracias — tu mensaje ha sido enviado. Responderemos pronto.')
+    except BadHeaderError:
+        messages.error(request, 'Encabezado inválido en el mensaje.')
+    except Exception:
+        messages.error(request, 'No fue posible enviar el mensaje. Intenta nuevamente más tarde.')
+
+    return redirect('home')
+
+def register_view(request):
+    """
+    Placeholder for registration page. Redirects to home for now.
+    """
+    # Later, this will render the registration form.
+    # For now, we redirect to prevent errors on the home page.
+    return redirect("home")
+
 
 # =========================
 # Login / Logout (UI)

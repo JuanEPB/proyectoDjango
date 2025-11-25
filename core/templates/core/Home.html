@@ -1,0 +1,232 @@
+{% extends 'core/base_public.html' %}
+{% load static %}
+
+{% block title %}Bienvenido a Pharmacontrol{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/homepage.css' %}">
+{% endblock %}
+
+{% block content %}
+<nav class="navbar navbar-expand-lg navbar-light navbar-sticky fixed-top" aria-label="Main navigation">
+  <div class="container">
+    <a class="navbar-brand" href="#">
+      <img src="{% static 'img/logo1.png' %}" alt="Pharmacontrol" width="36" height="36">
+      <span>Pharmacontrol</span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Mostrar menú">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto align-items-lg-center">
+        <li class="nav-item"><a class="nav-link" href="#benefits">Beneficios</a></li>
+        <li class="nav-item"><a class="nav-link" href="#contact">Contacto</a></li>
+        <li class="nav-item ms-2"><a class="btn btn-outline btn-cta btn-outline" href="{% url 'login' %}">Iniciar Sesión</a></li>
+        <li class="nav-item ms-2"><a class="btn btn-cta btn-primary" href="{% url 'register' %}">Registrarse</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<header class="hero-section">
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <h1 class="display-4">La gestión de tu farmacia, <span class="hero-accent">reimaginada</span></h1>
+        <p class="lead">Pharmacontrol unifica inventario, proveedores y reportes con inteligencia para que te enfoques en tus crecer tu negocio. Más control, menos pérdida.</p>
+
+        <div style="margin-top:1.25rem;">
+          <a class="btn btn-cta btn-primary me-2" href="{% url 'register' %}">Empieza gratis</a>
+          <a class="btn btn-cta btn-outline" href="#benefits">Conocer más</a>
+        </div>
+      </div>
+
+      <div class="hero-media text-center d-none d-lg-block" aria-hidden="true">
+        <img src="{% static 'img/logo1.png' %}" alt="Panel Pharmacontrol" class="hero-image">
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Standard Benefits Section -->
+<section id="benefits" class="section">
+  <div class="container text-center">
+    <h2 class="section-title">Todo lo que necesitas en un solo lugar</h2>
+    <div class="row g-4">
+      <div class="col-lg-4 col-md-6">
+        <div class="card benefit-card">
+          <div class="card-body p-4">
+            <div class="feature-icon mb-3"><i class="bi bi-box-seam"></i></div>
+            <h5 class="card-title fw-bold">Optimiza tu Inventario</h5>
+            <p class="card-text">Control preciso de tu stock en tiempo real, gestión de caducidad y prevención de pérdidas por productos vencidos.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4 col-md-6">
+        <div class="card benefit-card">
+          <div class="card-body p-4">
+            <div class="feature-icon mb-3"><i class="bi bi-truck"></i></div>
+            <h5 class="card-title fw-bold">Gestiona tus Proveedores</h5>
+            <p class="card-text">Centraliza la información de proveedores, agiliza pedidos y mantén un historial de compras detallado.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4 col-md-6">
+        <div class="card benefit-card">
+          <div class="card-body p-4">
+            <div class="feature-icon mb-3"><i class="bi bi-bar-chart-line"></i></div>
+            <h5 class="card-title fw-bold">Genera Reportes Clave</h5>
+            <p class="card-text">Obtén análisis sobre ventas, productos más vendidos y rendimiento para tomar decisiones informadas.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI Section -->
+<section class="section ai-section">
+  <div class="container text-center">
+    <h2 class="section-title">Ahora integrado con Inteligencia Artificial</h2>
+    <div class="row g-4 justify-content-center">
+      <div class="col-lg-4 col-md-6">
+        <div class="card benefit-card">
+          <div class="card-body p-4">
+            <div class="feature-icon mb-3"><i class="bi bi-envelope-at"></i></div>
+            <h5 class="card-title fw-bold">Reportes por Email</h5>
+            <p class="card-text">Recibe automáticamente en tu correo electrónico análisis y resúmenes de ventas, inventario y más, sin tener que pedirlos.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4 col-md-6">
+        <div class="card benefit-card">
+          <div class="card-body p-4">
+            <div class="feature-icon mb-3"><i class="bi bi-robot"></i></div>
+            <h5 class="card-title fw-bold">Análisis Predictivo</h5>
+            <p class="card-text">Nuestra IA analiza tus datos para predecir tendencias de ventas y sugerirte cuándo y cuánto reabastecer de cada producto.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Mobile App Section -->
+<section class="section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 text-center">
+                <img src="https://via.placeholder.com/450x450.png/0d6efd/FFFFFF?text=App+Mockup" alt="App Mockup" class="img-fluid rounded">
+            </div>
+            <div class="col-lg-6">
+                <h2 class="fw-bold mb-4">Usa nuestra App Móvil</h2>
+                <p class="lead">Toda la potencia de Pharmacontrol en la palma de tu mano. Gestiona tu farmacia desde cualquier lugar.</p>
+                <div class="d-flex align-items-start mb-3">
+                    <i class="bi bi-bell-fill fs-4 text-primary me-3"></i>
+                    <p>Recibe alertas en tiempo real sobre stock bajo o productos a punto de caducar directamente en tu móvil.</p>
+                </div>
+                <div class="d-flex align-items-start mb-3">
+                    <i class="bi bi-cloud-arrow-down-fill fs-4 text-primary me-3"></i>
+                    <p>Consulta y exporta tus reportes más importantes con solo unos toques, estés donde estés.</p>
+                </div>
+                 <a href="#" class="btn btn-dark ms-2"><i class="bi bi-google-play"></i> Google Play</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- Contact Section -->
+<section id="contact" class="section contact-section">
+  <div class="container">
+    <div class="row g-4 align-items-start">
+      <div class="col-lg-6">
+        <div class="map-wrap rounded">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d92581.36457655233!2d-99.70450049136382!3d19.2814264330484!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85cd89892a50ebb9%3A0xad3f4ad5550208c4!2sToluca%20de%20Lerdo%2C%20M%C3%A9x.!5e1!3m2!1ses-419!2smx!4v1764112566200!5m2!1ses-419!2smx"
+            width="100%" height="320" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="section-title">Contáctanos</h2>
+        <p class="lead">¿Tienes preguntas o quieres una demo? Escríbenos y te contactamos.</p>
+
+        <div class="contact-info mb-3">
+          <p><strong>Email:</strong> <a href="mailto:jpina7722@gmail.com">jpina7722@gmail.com</a></p>
+          <p><strong>Teléfono:</strong> <a href="tel:+527291270777">+52 729 127 0777</a></p>
+        </div>
+
+        <form action="{% url 'contact' %}" method="post" class="contact-form">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="contact-name" class="form-label">Nombre</label>
+            <input id="contact-name" name="name" class="form-control" placeholder="Tu nombre" required>
+          </div>
+          <div class="mb-3">
+            <label for="contact-email" class="form-label">Correo</label>
+            <input id="contact-email" name="email" type="email" class="form-control" placeholder="tu@correo.com" required>
+          </div>
+          <div class="mb-3">
+            <label for="contact-message" class="form-label">Mensaje</label>
+            <textarea id="contact-message" name="message" rows="4" class="form-control" placeholder="Escribe tu mensaje" required></textarea>
+          </div>
+          <div>
+            <button type="submit" class="btn btn-cta btn-primary">Enviar Mensaje</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer-dark pt-5 pb-4">
+  <div class="container text-center text-md-start">
+    <div class="row">
+      <div class="col-md-3 col-lg-4 col-xl-3 mx-auto mb-4">
+        <h6 class="text-uppercase fw-bold">Pharmacontrol</h6>
+        <hr class="mb-4 mt-0 d-inline-block mx-auto" style="width: 60px; background-color: #0d6efd; height: 2px"/>
+        <p>La solución definitiva para la administración eficiente y moderna de farmacias. Desarrollado por Innovasoft.</p>
+      </div>
+      <div class="col-md-3 col-lg-2 col-xl-2 mx-auto mb-4">
+        <h6 class="text-uppercase fw-bold">Secciones</h6>
+        <hr class="mb-4 mt-0 d-inline-block mx-auto" style="width: 60px; background-color: #0d6efd; height: 2px"/>
+        <p><a href="#benefits" class="text-reset">Beneficios</a></p>
+        <p><a href="#!" class="text-reset">Precios</a></p>
+      </div>
+      <div class="col-md-4 col-lg-3 col-xl-3 mx-auto mb-md-0 mb-4">
+        <h6 class="text-uppercase fw-bold">Contacto</h6>
+        <hr class="mb-4 mt-0 d-inline-block mx-auto" style="width: 60px; background-color: #0d6efd; height: 2px"/>
+        <p><i class="bi bi-geo-alt-fill me-3"></i> Toluca, MX</p>
+        <p><i class="bi bi-envelope-fill me-3"></i> jpina7722@gmail.com</p>
+        <p><i class="bi bi-telephone-fill me-3"></i> + 52 729 127 0777</p>
+      </div>
+    </div>
+  </div>
+  <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.2)">
+    © {% now "Y" %} Copyright:
+    <a class="text-white" href="#">Innovasoft</a>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const navbar = document.querySelector('.navbar-sticky');
+    if (navbar) {
+      function handleScroll() {
+        if (window.scrollY > 50) {
+          navbar.classList.add('scrolled');
+        } else {
+          navbar.classList.remove('scrolled');
+        }
+      }
+      handleScroll();
+      window.addEventListener('scroll', handleScroll);
+    }
+  });
+</script>
+{% endblock %}
