@@ -1,0 +1,37 @@
+{% load static %}
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background: #f6f8fb; color: #0f1724; }
+      .card { max-width: 680px; margin: 24px auto; background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(15,23,36,0.06); overflow: hidden; }
+      .header { background: linear-gradient(90deg, #0d6efd 0%, #4791ff 100%); padding: 18px; color: #fff; display:flex; align-items:center; gap:12px }
+      .logo { width:48px; height:48px; border-radius:8px; background:#fff; padding:6px; }
+      .body { padding: 20px 24px; }
+      .meta { font-size:0.95rem; color:#6c757d; margin-bottom:12px }
+      .message { white-space: pre-wrap; background: #f4f7fb; padding:12px; border-radius:8px; border:1px solid rgba(15,23,36,0.03); }
+      .footer { padding: 16px 24px; font-size:0.9rem; color:#6c757d; text-align:center }
+      a.btn { display:inline-block; padding:8px 14px; border-radius:8px; background: #0d6efd; color:#fff; text-decoration:none }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="header">
+        <img src="{% static 'core/images/logo.png' %}" alt="Pharmacontrol" class="logo">
+        <div>
+          <div style="font-weight:700">Contacto Pharmacontrol</div>
+          <div style="font-size:0.9rem">Solicitud enviada desde la web</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="meta">Nombre: <strong>{{ name }}</strong> &nbsp;·&nbsp; Email: <strong>{{ email }}</strong></div>
+        <div class="message">{{ message }}</div>
+        <hr style="margin:18px 0; border:none; border-top:1px solid rgba(15,23,36,0.06)">
+        <p style="margin:0">Origen: <a href="{{ origin }}">{{ origin }}</a></p>
+      </div>
+      <div class="footer">Pharmacontrol &copy; {{ year }} — <a href="{{ origin }}">Visitar sitio</a></div>
+    </div>
+  </body>
+</html>

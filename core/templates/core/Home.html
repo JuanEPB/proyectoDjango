@@ -23,8 +23,8 @@
       <ul class="navbar-nav ms-auto align-items-lg-center">
         <li class="nav-item"><a class="nav-link" href="#benefits">Beneficios</a></li>
         <li class="nav-item"><a class="nav-link" href="#contact">Contacto</a></li>
-        <li class="nav-item ms-2"><a class="btn btn-outline btn-cta btn-outline" href="{% url 'login' %}">Iniciar Sesión</a></li>
-        <li class="nav-item ms-2"><a class="btn btn-cta btn-primary" href="{% url 'register' %}">Registrarse</a></li>
+        <li class="nav-item ms-2"><a class="btn btn-outline btn-cta btn-outline" href="#contact">Contratalo</a></li>
+        <li class="nav-item ms-2"><a class="btn btn-cta btn-primary" href="{% url 'login' %}">Iniciar Sesion</a></li>
       </ul>
     </div>
   </div>
@@ -38,7 +38,7 @@
         <p class="lead">Pharmacontrol unifica inventario, proveedores y reportes con inteligencia para que te enfoques en tus crecer tu negocio. Más control, menos pérdida.</p>
 
         <div style="margin-top:1.25rem;">
-          <a class="btn btn-cta btn-primary me-2" href="{% url 'register' %}">Empieza gratis</a>
+          <a class="btn btn-cta btn-primary me-2" href="{% url 'login' %}">Inicia Sesion</a>
           <a class="btn btn-cta btn-outline" href="#benefits">Conocer más</a>
         </div>
       </div>
@@ -154,12 +154,14 @@
         <p class="lead">¿Tienes preguntas o quieres una demo? Escríbenos y te contactamos.</p>
 
         <div class="contact-info mb-3">
-          <p><strong>Email:</strong> <a href="mailto:jpina7722@gmail.com">jpina7722@gmail.com</a></p>
+          <p><strong>Email:</strong> <a href="mailto:pharmacontrolcc@gmail.com">pharmacontrolcc@gmail.com</a></p>
           <p><strong>Teléfono:</strong> <a href="tel:+527291270777">+52 729 127 0777</a></p>
         </div>
 
         <form action="{% url 'contact' %}" method="post" class="contact-form">
           {% csrf_token %}
+          <!-- Honeypot field: bots often fill hidden fields -->
+          <input type="text" name="hp" style="display:none!important;visibility:hidden;" tabindex="-1" autocomplete="off">
           <div class="mb-3">
             <label for="contact-name" class="form-label">Nombre</label>
             <input id="contact-name" name="name" class="form-control" placeholder="Tu nombre" required>

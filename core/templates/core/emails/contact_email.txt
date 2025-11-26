@@ -1,0 +1,12 @@
+Contacto Pharmacontrol
+
+Nombre: {{ name }}
+Email: {{ email }}
+
+Mensaje:
+{{ message }}
+
+Origen: {{ origin }}
+
+--
+Pharmacontrol

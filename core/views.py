@@ -12,6 +12,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from core.decorators import login_required_custom
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 
@@ -19,6 +20,15 @@ from django.conf import settings
 from api_client import API_BASE_URL  
 from django.core.mail import send_mail
 from django.core.mail import BadHeaderError
+import logging
+import smtplib
+from django.core.mail import get_connection, EmailMessage, EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.core.cache import cache
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+
+logger = logging.getLogger(__name__)
 
 # =========================
 # Config
@@ -153,29 +163,48 @@ def _strip_accents(s: str) -> str:
 # =========================
 # Bridge (JS -> Django session)
 # =========================
+@csrf_exempt
+@require_POST
+def bridge_clear_token(request):
+    """
+    Limpia completamente la sesión de Django.
+    """
+    try:
+        # Flush completo de sesión
+        request.session.flush()
+        
+        # Asegurar que la cookie se elimine
+        response = JsonResponse({"ok": True})
+        response.delete_cookie('sessionid')
+        return response
+    except Exception as e:
+        logger.error(f"Error clearing session: {e}")
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
 @require_POST
 @csrf_exempt
 def bridge_store_token(request):
     """
-    El JS guarda el accessToken en localStorage y nos lo manda aquí
-    para que Django lo tenga en sesión y pueda consumir la API.
+    Guarda el accessToken en la sesión de Django.
     """
     try:
         data = json.loads(request.body or "{}")
         token = data.get("accessToken")
         if not token:
             return HttpResponseBadRequest("no token")
+        
+        # Guardar en sesión
         request.session["jwt"] = token
         request.session.modified = True
+        
+        # Forzar guardado inmediato
+        request.session.save()
+        
         return JsonResponse({"ok": True})
     except Exception as e:
+        logger.error(f"Error storing token: {e}")
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
-
-@require_POST
-@csrf_exempt
-def bridge_clear_token(request):
-    request.session.pop("jwt", None)
-    return JsonResponse({"ok": True})
 
 
 # =========================
@@ -185,32 +214,113 @@ def home_view(request):
     """
     Renderiza la página de inicio pública (landing page).
     """
-    return render(request, "core/home.html")
+    return render(request, "core/Home.html")
 
 
 @require_POST
 def contact_view(request):
-    """Procesa el formulario de contacto público y envía un email al administrador."""
+    """Procesa el formulario de contacto público y envía un email al administrador.
+
+    Protecciones incluidas:
+    - Honeypot (campo oculto `hp` en el formulario)
+    - Validación básica de email
+    - Rate-limit por IP usando cache (5 mensajes / hora)
+    - Envío multipart (text + HTML) con `Reply-To` al email del cliente
+    - Fallback a consola si falla la autenticación SMTP
+    """
     name = (request.POST.get('name') or '').strip()
     email = (request.POST.get('email') or '').strip()
     message = (request.POST.get('message') or '').strip()
+    honeypot = (request.POST.get('hp') or '').strip()
+
+    # Honeypot: si tiene contenido, tratamos como spam silenciosamente
+    if honeypot:
+        logger.info('Contact form honeypot triggered; dropping submission')
+        return redirect('home')
 
     if not (name and email and message):
         messages.error(request, 'Por favor completa todos los campos del formulario de contacto.')
         return redirect('home')
 
+    # Validar email del remitente (cliente)
+    try:
+        validate_email(email)
+    except ValidationError:
+        messages.error(request, 'Por favor ingresa un correo válido.')
+        return redirect('home')
+
+    # Rate-limit simple por IP: 5 envíos por hora
+    ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', 'unknown')).split(',')[0].strip()
+    rl_key = f"contact_rl:{ip}"
+    try:
+        count = cache.get(rl_key)
+        if count is None:
+            cache.set(rl_key, 1, timeout=3600)
+            count = 1
+        else:
+            try:
+                cache.incr(rl_key)
+                count = cache.get(rl_key)
+            except Exception:
+                # some cache backends may not support incr on missing keys concurrently
+                cache.set(rl_key, int(count) + 1, timeout=3600)
+                count = cache.get(rl_key)
+        if int(count) > 5:
+            messages.error(request, 'Has enviado demasiados mensajes. Intenta nuevamente más tarde.')
+            return redirect('home')
+    except Exception:
+        # Si falla el cache por alguna razón, no bloqueamos el envío, solo lo registramos
+        logger.exception('Error checking rate limit cache for contact form')
+
     subject = f"Contacto Pharmacontrol: {name}"
-    body = f"Nombre: {name}\nEmail: {email}\n\nMensaje:\n{message}"
-    recipient = ['jpina7722@gmail.com']
-    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or email or 'webmaster@localhost'
+
+    # Recipient(s)
+    recipient = [getattr(settings, 'CONTACT_RECIPIENT', None) or 'pharmacontrolcc@gmail.com']
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'webmaster@localhost')
+
+    # Render templates for text and HTML bodies
+    context = {
+        'name': name,
+        'email': email,
+        'message': message,
+        'site_name': getattr(settings, 'SITE_NAME', 'Pharmacontrol'),
+        'logo_url': (request.build_absolute_uri(settings.STATIC_URL + 'img/logo.png') if getattr(settings, 'STATIC_URL', None) else None),
+    }
+    text_body = render_to_string('core/emails/contact_email.txt', context)
+    html_body = render_to_string('core/emails/contact_email.html', context)
 
     try:
-        send_mail(subject, body, from_email, recipient, fail_silently=False)
+        conn = get_connection()
+        msg = EmailMultiAlternatives(subject, text_body, from_email, recipient, connection=conn, reply_to=[email])
+        msg.attach_alternative(html_body, 'text/html')
+        # Optional BCC if configured
+        bcc = getattr(settings, 'CONTACT_BCC', None)
+        if bcc:
+            if isinstance(bcc, (list, tuple)):
+                msg.bcc = list(bcc)
+            else:
+                msg.bcc = [bcc]
+        msg.send(fail_silently=False)
         messages.success(request, 'Gracias — tu mensaje ha sido enviado. Responderemos pronto.')
     except BadHeaderError:
+        logger.exception('BadHeaderError sending contact email')
         messages.error(request, 'Encabezado inválido en el mensaje.')
-    except Exception:
-        messages.error(request, 'No fue posible enviar el mensaje. Intenta nuevamente más tarde.')
+    except Exception as e:
+        logger.exception('Unexpected error sending contact email')
+        # Detect SMTP auth error and fallback to console backend for local testing
+        if isinstance(e, smtplib.SMTPAuthenticationError) or (hasattr(e, 'smtp_code') and getattr(e, 'smtp_code', None) == 535):
+            try:
+                conn = get_connection('django.core.mail.backends.console.EmailBackend')
+                fallback = EmailMessage(subject, text_body, from_email, recipient, connection=conn)
+                fallback.attach_alternative(html_body, 'text/html')
+                fallback.send(fail_silently=False)
+                messages.success(request, 'No fue posible enviar mediante SMTP; el mensaje se imprimió en la consola para pruebas.')
+                logger.warning('Fell back to console email backend due to SMTP authentication error')
+            except Exception:
+                logger.exception('Fallback to console backend failed')
+                messages.error(request, 'No fue posible enviar el mensaje. Intenta nuevamente más tarde.')
+        else:
+            messages.error(request, 'No fue posible enviar el mensaje. Intenta nuevamente más tarde.')
 
     return redirect('home')
 
@@ -227,18 +337,34 @@ def register_view(request):
 # Login / Logout (UI)
 # =========================
 def login_view(request):
-    # El login real lo hace el JS (auth.js) contra Nest.
+    """
+    Renderiza la página de login.
+    La lógica de autenticación y redirección post-login es manejada
+    completamente por el JavaScript del lado del cliente (dashboard.js).
+    """
+
+    # Para todos los demás (no logueados, vendedores, etc.), muestra el login.
+    # El JS se encargará de la autenticación y de la redirección post-login.
     return render(request, "core/login.html")
 
+@require_POST
+@csrf_exempt # El logout desde JS no enviará token CSRF
 def logout_view(request):
-    request.session.flush()
-    return redirect("login")
+    """
+    Endpoint de logout para Django. Destruye la sesión completa.
+    Es un alias/fallback para bridge_clear_token.
+    """
+    try:
+        request.session.flush()
+    except Exception: pass
+    return render(request, "core/login.html")
 
 # =========================
 # Dashboard / Medicamentos
 # =========================
 
 
+@login_required_custom
 def medicamentos_view(request):
     err, meds = _get(request, API["meds_all"])
     if err == "unauthorized":
@@ -611,7 +737,6 @@ def carrito_view(request):
         },
     )
 
-@csrf_exempt
 def agregar_al_carrito(request, medicamento_id):
     if request.method == "POST":
         token = request.session.get("jwt")
@@ -645,7 +770,6 @@ def agregar_al_carrito(request, medicamento_id):
         request.session["carrito"] = carrito
     return redirect("carrito")
 
-@csrf_exempt
 def quitar_del_carrito(request, medicamento_id):
     if request.method == "POST":
         carrito = request.session.get("carrito", [])
@@ -653,7 +777,6 @@ def quitar_del_carrito(request, medicamento_id):
         request.session["carrito"] = carrito
     return redirect("carrito")
 
-@csrf_exempt
 def realizar_compra(request):
     if request.method == "POST":
         token = request.session.get("jwt")
@@ -733,7 +856,6 @@ def order_detail_json(request, order_id: int):
     return JsonResponse(data or {}, safe=False)
 
 
-@csrf_exempt
 def order_create_json(request):
     """POST -> crear pedido (proxy a Nest). Espera payload:
     {
@@ -761,7 +883,6 @@ def order_create_json(request):
     return JsonResponse({"error": "no se pudo crear", "detail": r.text if r else ""}, status=code)
 
 
-@csrf_exempt
 def order_patch_status_json(request, order_id: int):
     """PATCH -> cambiar estatus (proxy a Nest). Body: { "estatus": "RECIBIDO" }"""
     if request.method != "PATCH" and request.method != "POST":
@@ -974,69 +1095,6 @@ def search_inventory(request):
 
     return JsonResponse({'results': results[:12]})
 
-    q = (request.GET.get('q') or '').strip()
-    results = []
-    if len(q) < 2:
-        return JsonResponse({'results': results})
-
-    # Medicamentos: nombre, lote, código
-    meds = (Medicamento.objects
-            .filter(Q(nombre__icontains=q) | Q(lote__icontains=q) | Q(codigo__icontains=q))
-            .select_related('categoria', 'proveedor')[:6])
-    for m in meds:
-        results.append({
-            'type': 'Medicamento',
-            'label': f'{m.nombre}',
-            'sub': f'Lote: {m.lote} · Cat: {getattr(m.categoria,"nombre","—")} · Prov: {getattr(m.proveedor,"nombre","—")}',
-            'extra': f'Stock: {m.stock}',
-            'url': f'/inventario/medicamentos/{m.id}/detalle'
-        })
-
-    # Proveedores: nombre, rfc, contacto
-    provs = (Proveedor.objects
-             .filter(Q(nombre__icontains=q) | Q(rfc__icontains=q) | Q(contacto__icontains=q))[:4])
-    for p in provs:
-        results.append({
-            'type': 'Proveedor',
-            'label': p.nombre,
-            'sub': f'RFC: {getattr(p,"rfc","—")} · Contacto: {getattr(p,"contacto","—")}',
-            'extra': None,
-            'url': f'/inventario/proveedores/{p.id}'
-        })
-
-    # Pedidos: folio, estado
-    peds = (Pedido.objects
-            .filter(Q(folio__icontains=q) | Q(estado__icontains=q) | Q(proveedor__nombre__icontains=q))
-            .select_related('proveedor')[:4])
-    for pd in peds:
-        results.append({
-            'type': 'Pedido',
-            'label': f'Folio {pd.folio}',
-            'sub': f'Proveedor: {getattr(pd.proveedor,"nombre","—")} · Estado: {pd.estado}',
-            'extra': getattr(pd, 'total', None) and f'${pd.total:.2f}',
-            'url': f'/pedidos/{pd.id}'
-        })
-
-    # Ventas: folio, paciente/cliente
-    vts = (Venta.objects
-           .filter(Q(folio__icontains=q) | Q(cliente__icontains=q))
-           .order_by('-fecha')[:4])
-    for v in vts:
-        results.append({
-            'type': 'Venta',
-            'label': f'Folio {v.folio}',
-            'sub': f'Cliente: {getattr(v,"cliente","—")} · Fecha: {v.fecha:%Y-%m-%d}',
-            'extra': f'${getattr(v,"total",0):.2f}',
-            'url': f'/ventas/{v.id}'
-        })
-
-    # Ordenar por prioridad sencilla (Medicamento > Proveedor > Pedido > Venta)
-    order = {'Medicamento':0,'Proveedor':1,'Pedido':2,'Venta':3}
-    results.sort(key=lambda r: order.get(r['type'], 9))
-
-    # Responder
-    return JsonResponse({'results': results[:12]})
-
 def search_meds(request):
     # Requiere JWT en sesión para consultar Nest
     if not request.session.get("jwt"):
@@ -1133,5 +1191,5 @@ def doc_descargar_json(request, doc_id: str):
 def venta_detalle_json(request, venta_id: str):
     err, data = _get(request, f"{VENTAS_GET}/{venta_id}")
     if err == "unauthorized":
-        return JsonResponse({"error":"unauthorized"}, status=401)
+        return JsonResponse({"error": "unauthorized"}, status=401)
     return JsonResponse(data or {}, safe=False)

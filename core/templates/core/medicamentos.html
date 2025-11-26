@@ -3,8 +3,12 @@
 
 {% block title %}Dashboard · Pharmacontrol{% endblock %}
 
-{% block content %}
+{% block head_extra %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
+{% block content %}
+<!-- Contenido específico de la página de Dashboard -->
 <div class="appbar">
   <div class="crumbs">Pharmacontrol / <b>Dashboard</b></div>
   <div class="spacer"></div>
@@ -77,12 +81,10 @@
 {% endblock %}
 
 {% block scripts %}
- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     window.__DATA__ = {{ chart_data_json|safe }};
     window.__MEDS__ = {{ meds_json|safe }};
   </script>
-  <script src="{% static 'js/dashboard.js' %}"></script>
 
 
   <!-- Render de gráficas y tabla (seguro, sin fallar si falta algo) -->

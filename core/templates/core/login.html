@@ -71,23 +71,29 @@
     </div>
   </div>
 
-  <!-- Redirección si ya hay sesión -->
- <script>
-  (function(){
-    if (sessionStorage.getItem('pc_access_token_v1')) {
-      window.location.href = "{% url 'medicamentos' %}";
-    }
-  })();
-</script>
-
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css">
-<script>
-  window.APP_CONFIG = {
-    API_URL: "https://api.pharmacontrol.site"
-  };
-</script>
-<script src="{% static 'js/auth.js' %}"></script>
 
+  <script>
+    // Config de la API para el login (esto ya lo tenías)
+    window.APP_CONFIG = {
+      API_URL: "https://api.pharmacontrol.site"
+    };
 
+    // Cada vez que se muestra la pantalla de login, limpiamos el token del navegador
+    try {
+      const KEY = 'pc_access_token_v1';
+      if (window.sessionStorage) {
+        sessionStorage.removeItem(KEY);
+      }
+      if (window.localStorage) {
+        localStorage.removeItem(KEY); // por si en algún momento se usó localStorage
+      }
+    } catch (e) {
+      console.warn('[login] No se pudo limpiar storage:', e);
+    }
+  </script>
 
+  <script src="{% static 'js/dashboard.js' %}"></script>
 </body>
+
+</html>

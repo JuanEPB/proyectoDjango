@@ -158,3 +158,21 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
 ]
+
+# =========================
+# Email configuration (use environment variables)
+# Recommended: set these in your .env file (never commit credentials)
+# If no SMTP user is provided and DEBUG=True, fall back to console backend for local testing.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587') or 587)
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False') == 'True'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Pharmacontrol <no-reply@tu-dominio.com>')
+
+if not EMAIL_HOST_USER and DEBUG:
+    # helpful for local dev: print emails to console
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
