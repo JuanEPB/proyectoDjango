@@ -47,7 +47,6 @@
 
 /* Hero */
 .hero-section {
-  padding: 72px 0;
   background: linear-gradient(
     180deg,
     rgba(11, 99, 216, 0.08),
@@ -119,6 +118,7 @@ h1.display-4 {
 @media (max-width: 1199px) {
   .hero-media {
     flex: 0 0 360px;
+    margin-top: 100px;
   }
 }
 .hero-image {
@@ -253,7 +253,7 @@ h1.display-4 {
     font-size: 2.1rem;
   }
   .hero-section {
-    padding: 48px 0;
+    padding: 100px 0;
   }
   .navbar-sticky {
     padding: 0.6rem 0;

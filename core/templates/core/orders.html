@@ -50,6 +50,7 @@
 
 <div class="contenido">
   <div class="page-header">
+      <div id="alertBox" class="alert d-none" role="alert"></div>
     <div>
       <div class="title">Pedidos</div>
       <div class="subtitle">Control de órdenes a proveedores y estatus.</div>
@@ -189,12 +190,58 @@
 </script>
 
 <script>
+  // ---- CSRF ----
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      // Does this cookie string begin with the name we want?
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+const CSRF_TOKEN = getCookie('csrftoken');
+
 const EP = window.ORDERS_ENDPOINTS;
 const $ = (sel)=>document.querySelector(sel);
 const money = (n)=> (Math.round((+n)*100)/100).toFixed(2);
 
+const showAlert = (msg, type = "success") => {
+  const box = $("#alertBox");
+  if (!box) return;
+  box.textContent = msg;
+  box.className = `alert alert-${type}`;
+  box.classList.remove("d-none");
+
+  // se oculta solo después de 4s
+  setTimeout(() => {
+    box.classList.add("d-none");
+  }, 4000);
+};
+
+const setBtnLoading = (btn, loading) => {
+  if (!btn) return;
+  if (loading) {
+    btn.disabled = true;
+    btn.dataset.originalText = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Guardando...`;
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.originalText) {
+      btn.innerHTML = btn.dataset.originalText;
+    }
+  }
+};
+
 let carrito = [];
 let catalogoMeds = [];
+
 
 // ---------- LISTA ----------
 async function cargarLista(){
@@ -252,12 +299,31 @@ async function cargarFarmacias(){
 
 async function cargarMedsPorProveedor(){
   const pid = Number($("#proveedor").value);
+  if (!pid) {
+    $("#medicamento").innerHTML = '<option value="">Selecciona un proveedor…</option>';
+    return;
+  }
+
   const res = await fetch(EP.provMeds(pid));
-  catalogoMeds = await res.json();
-  $("#medicamento").innerHTML = (catalogoMeds||[]).map(m=>`
-    <option value="${m.id}" data-precio="${m.precio ?? 0}">${m.nombre}</option>
-  `).join('');
+  if (!res.ok) {
+    showAlert('No se pudieron cargar los medicamentos.', 'danger');
+    $("#medicamento").innerHTML = '<option value="">Error al cargar medicamentos</option>';
+    return;
+  }
+
+  const list = await res.json();
+  if (!Array.isArray(list) || !list.length) {
+    $("#medicamento").innerHTML = '<option value="">No hay medicamentos disponibles.</option>';
+    return;
+  }
+
+  catalogoMeds = list;
+  $("#medicamento").innerHTML = list
+    .map(m => `<option value="${m.id}" data-precio="${m.precio ?? 0}">${m.nombre}</option>`)
+    .join('');
 }
+
+
 
 // ---------- MODAL NUEVO ----------
 function renderItems(){
@@ -331,16 +397,24 @@ document.addEventListener('click', async (e)=>{
   if(btn.classList.contains('btn-recibir')){
     const id = btn.dataset.id;
     if(!confirm('¿Confirmar recepción del pedido?')) return;
+
+    setBtnLoading(btn, true);
     const res = await fetch(EP.patchStatus(id), {
-      method:'PATCH', headers:{'Content-Type':'application/json'},
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ estatus: 'RECIBIDO' })
     });
+    setBtnLoading(btn, false);
+
     if(!res.ok){
       const txt = await res.text().catch(()=> '');
-      return alert('No se pudo recibir el pedido.\n'+txt);
+      showAlert('No se pudo recibir el pedido.\n'+txt, 'danger');
+      return;
     }
+    showAlert('Pedido marcado como recibido y stock actualizado.', 'success');
     await cargarLista();
   }
+
 });
 
 $("#proveedor")?.addEventListener('change', cargarMedsPorProveedor);
@@ -360,24 +434,64 @@ $("#btnAdd")?.addEventListener('click', ()=>{
 
 $("#btnCreate")?.addEventListener('click', async (e)=>{
   e.preventDefault();
-  if(!carrito.length) return alert('Agrega al menos 1 medicamento');
+
+  const proveedorId = +$("#proveedor").value;
+  const farmaciaId = +$("#farmacia").value;
+
+  if(!proveedorId){
+    showAlert('Selecciona un proveedor.', 'warning');
+    return;
+  }
+  if(!farmaciaId){
+    showAlert('Selecciona una farmacia.', 'warning');
+    return;
+  }
+  if(!carrito.length){
+    showAlert('Agrega al menos 1 medicamento al pedido.', 'warning');
+    return;
+  }
 
   const payload = {
-    proveedorId: +$("#proveedor").value,
-    farmaciaId: +$("#farmacia").value,
-    items: carrito.map(x=>({ medicamentoId: x.medicamentoId, cantidad: x.cantidad, precioUnitario: x.precio }))
+    proveedorId,
+    farmaciaId,
+    items: carrito.map(x=>({
+      medicamentoId: x.medicamentoId,
+      cantidad: x.cantidad,
+      precioUnitario: x.precio
+    }))
   };
 
-  const res = await fetch(EP.create, {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
-  });
+  const btnCreate = $("#btnCreate");
+  setBtnLoading(btnCreate, true);
+
+const res = await fetch(EP.create, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': CSRF_TOKEN,
+  },
+  body: JSON.stringify(payload)
+});
+
+
+  setBtnLoading(btnCreate, false);
+
   if(!res.ok){
     const txt = await res.text().catch(()=> '');
-    return alert('Error al crear pedido.\n'+txt);
+    showAlert('Error al crear pedido.\n'+txt, 'danger');
+    return;
   }
+
+  // limpiar carrito + formulario para siguiente pedido
+  carrito = [];
+  renderItems();
+  $("#cantidad").value = 1;
+
   $("#dlgNuevo").close();
+  showAlert('Pedido creado correctamente.', 'success');
   await cargarLista();
 });
+
 
 // init
 document.addEventListener('DOMContentLoaded', cargarLista);

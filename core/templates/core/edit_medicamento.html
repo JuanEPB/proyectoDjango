@@ -1,0 +1,242 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Editar Medicamento · Pharmacontrol{% endblock %}
+
+{% block head_extra %}
+  <style>
+    .detalle-wrapper {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .detalle-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px 24px 20px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+    .detalle-header-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .detalle-header-subtitle {
+      color: #64748b;
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+    .detalle-section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+    .detalle-divider {
+      border-top: 1px solid rgba(148, 163, 184, 0.35);
+      margin: 20px 0;
+    }
+    .detalle-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px 40px;
+    }
+    .detalle-item-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+    .detalle-item-value input,
+    .detalle-item-value select {
+      font-size: 0.95rem;
+    }
+    @media (max-width: 768px) {
+      .detalle-card {
+        padding: 18px 16px 16px;
+      }
+      .detalle-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="detalle-wrapper">
+
+    <!-- Encabezado de página -->
+    <div class="page-header" style="margin-bottom: 1.25rem;">
+      <div>
+        <div class="title">Editar medicamento</div>
+        <div class="subtitle">
+          Actualiza los datos del medicamento en el inventario.
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'detalle_medicamento' medicamento.id %}" class="btn btn-sm btn-ghost">
+          <i class="bi bi-arrow-left-short"></i> Ver detalle
+        </a>
+        <a href="{% url 'inventory' %}" class="btn btn-sm btn-ghost">
+          <i class="bi bi-box"></i> Volver al inventario
+        </a>
+      </div>
+    </div>
+
+    <div class="detalle-card">
+      <form method="post" action="">
+        {% csrf_token %}
+
+        <!-- Header -->
+        <div class="mb-3">
+          <h1 class="detalle-header-title">{{ medicamento.nombre }}</h1>
+          <p class="detalle-header-subtitle">
+            ID #{{ medicamento.id }} · Lote actual: {{ medicamento.lote|default:"N/D" }}
+          </p>
+        </div>
+
+        <!-- Información principal -->
+        <div class="mb-3">
+          <div class="detalle-section-title">Información principal</div>
+          <div class="detalle-grid">
+
+            <div>
+              <div class="detalle-item-label">Nombre del medicamento</div>
+              <div class="detalle-item-value">
+                <input type="text"
+                       name="nombre"
+                       class="form-control"
+                       value="{{ medicamento.nombre }}"
+                       required>
+              </div>
+            </div>
+
+            <div>
+              <div class="detalle-item-label">Categoría</div>
+              <div class="detalle-item-value">
+                <select name="categoria_id" class="form-select" required>
+                  <option value="">Selecciona una categoría</option>
+                  {% for cat in categorias %}
+                    <option value="{{ cat.id }}"
+                      {% if medicamento.categoria.id == cat.id %}selected{% endif %}>
+                      {{ cat.nombre }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <div class="detalle-item-label">Fecha de caducidad</div>
+              <div class="detalle-item-value">
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <i class="bi bi-calendar-event"></i>
+                  </span>
+                  <input type="date"
+                         name="caducidad"
+                         class="form-control"
+                         value="{{ medicamento.caducidad }}"
+                         required>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="detalle-item-label">Lote</div>
+              <div class="detalle-item-value">
+                <input type="text"
+                       name="lote"
+                       class="form-control"
+                       value="{{ medicamento.lote }}"
+                       required>
+              </div>
+            </div>
+
+            <div>
+              <div class="detalle-item-label">Precio unitario</div>
+              <div class="detalle-item-value">
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number"
+                         name="precio"
+                         step="0.01"
+                         min="0"
+                         class="form-control"
+                         value="{{ medicamento.precio }}"
+                         required>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="detalle-item-label">Stock total</div>
+              <div class="detalle-item-value">
+                <input type="number"
+                       name="stock"
+                       min="0"
+                       class="form-control"
+                       value="{{ medicamento.stock|default:0 }}"
+                       required>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="detalle-divider"></div>
+
+        <!-- Proveedor -->
+        <div class="mb-3">
+          <div class="detalle-section-title">Proveedor</div>
+          <div class="detalle-grid">
+            <div>
+              <div class="detalle-item-label">Proveedor asignado</div>
+              <div class="detalle-item-value">
+                <select name="proveedor_id" class="form-select" required>
+                  <option value="">Selecciona un proveedor</option>
+                  {% for prov in proveedores %}
+                    <option value="{{ prov.id }}"
+                      {% if medicamento.proveedor.id == prov.id %}selected{% endif %}>
+                      {{ prov.nombre }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div>
+              <div class="detalle-item-label">Contacto (solo lectura de la API)</div>
+              <div class="detalle-item-value text-muted">
+                {{ medicamento.proveedor.contacto|default:"Sin dato" }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detalle-divider"></div>
+
+        <!-- Acciones -->
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="text-muted small">
+            Revisa bien los datos antes de guardar, ya se reflejarán en el inventario y reportes.
+          </div>
+          <div class="d-flex gap-2">
+            <a href="{% url 'inventory' %}" class="btn btn-light">
+              Cancelar
+            </a>
+            <button type="submit" class="btn-brand">
+              Guardar cambios
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+{% endblock %}

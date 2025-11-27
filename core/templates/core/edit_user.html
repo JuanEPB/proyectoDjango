@@ -1,0 +1,135 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Editar usuario · Pharmacontrol{% endblock %}
+
+{% block content %}
+<div class="appbar">
+  <div class="crumbs">
+    <a href="{% url 'users' %}">Usuarios</a> / <b>Editar</b>
+  </div>
+  <div class="spacer"></div>
+</div>
+
+
+  <div class="page-header">
+    <div>
+      <div class="title">Editar usuario</div>
+      <div class="subtitle">
+        Actualiza los datos del usuario en la farmacia.
+      </div>
+    </div>
+  </div>
+
+  <div class="card span-8" style="max-width:880px;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h4 class="mb-0">
+        {{ user.nombre }} {{ user.apellido }}
+      </h4>
+      <div class="d-flex flex-column text-end">
+        <span class="badge-soft">
+          Rol actual: {{ user.rol|title }}
+        </span>
+        {% if user.farmacia.nombre %}
+          <small class="text-muted">
+            Farmacia: {{ user.farmacia.nombre }}
+          </small>
+        {% endif %}
+      </div>
+    </div>
+
+    <p class="text-muted" style="font-size:0.9rem;">
+      Solo se editan los datos básicos. El plan y la farmacia se gestionan desde la administración.
+    </p>
+
+    {% if error %}
+      <div class="alert alert-danger py-2 mb-3">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'edit_user' user.id %}" class="row g-3 mt-1">
+      {% csrf_token %}
+
+      <div class="col-md-6">
+        <label class="form-label">Nombre</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-person"></i></span>
+          <input
+            name="nombre"
+            class="form-control"
+            placeholder="Nombre"
+            value="{{ user.nombre }}"
+            required
+          >
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Apellido</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-person-vcard"></i></span>
+          <input
+            name="apellido"
+            class="form-control"
+            placeholder="Apellido"
+            value="{{ user.apellido }}"
+            required
+          >
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Rol</label>
+        <select name="rol" class="form-select" required>
+          <option value="admin"   {% if user.rol == "admin" %}selected{% endif %}>Admin</option>
+          <option value="usuario" {% if user.rol == "usuario" %}selected{% endif %}>Usuario</option>
+        </select>
+        <div class="form-text">
+          <span class="chip ok">Admin</span> acceso total · 
+          <span class="chip warn">Usuario</span> acceso a inventario y operaciones básicas.
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Correo electrónico</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+          <input
+            type="email"
+            name="email"
+            class="form-control"
+            placeholder="correo@dominio.com"
+            value="{{ user.email }}"
+            required
+          >
+        </div>
+      </div>
+
+      <!-- Info de farmacia / plan, readonly pero útil para contexto -->
+      {% if user.farmacia %}
+      <div class="col-12 mt-2">
+        <div class="detalle-divider mb-2" style="border-top:1px solid rgba(148,163,184,.35);"></div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <div class="text-muted small">
+            Farmacia asignada: <strong>{{ user.farmacia.nombre }}</strong>
+            {% if user.farmacia.empresa.plan.nombre %}
+              · Plan: <strong>{{ user.farmacia.empresa.plan.nombre }}</strong>
+            {% endif %}
+          </div>
+          <span class="badge-soft">
+            RFC: {{ user.farmacia.rfc }} · Tel: {{ user.farmacia.telefono }}
+          </span>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="col-12 d-flex gap-2 mt-3">
+        <a href="{% url 'users' %}" class="btn-ghost">
+          <i class="bi bi-arrow-left"></i> Cancelar
+        </a>
+        <button type="submit" class="btn-brand">
+          <i class="bi bi-check2-circle"></i> Guardar cambios
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

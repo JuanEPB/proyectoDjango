@@ -19,7 +19,7 @@ urlpatterns = [
     path('medicamentos/', core.medicamentos_view, name='medicamentos'),  # alias a medicamentos_view
     path('inventario/detalle/<int:medicamento_id>/', core.detalle_medicamento_view, name='detalle_medicamento'),
     path('inventario/eliminar/<int:medicamento_id>/', core.eliminar_medicamento_view, name='eliminar_medicamento'),
-    path('medicamento/edit/<int:medicamento_id>/', core.edit_medicamento_view, name='edit_medicamento'),
+    path('medicamento/edit/<int:med_id>/', core.edit_medicamento_view, name='edit_medicamento'),
     path('inventory/', core.inventory_view, name='inventory'),
     path('inventory/create/', core.create_medicamento_view, name='create_medicamento'),
 

@@ -1,93 +1,47 @@
+{% extends "core/base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Inventario de Medicamentos · Pharmacontrol</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Bootstrap & Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+{% block title %}Inventario de Medicamentos · Pharmacontrol{% endblock %}
 
-  <!-- Estilos globales -->
-  <link rel="stylesheet" href="{% static 'css/pharmacontrol.css' %}">
-</head>
-<body>
+{% block head_extra %}
+  {# Si necesitas algo extra, como Chart.js, va aquí #}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
-<!-- ===== SIDEBAR ===== -->
-<div class="submenu">
-  <div class="side-bar">
-    <div>
-      <div class="logo">Pharmacontrol</div>
-      <div class="list-menu1">
-        <div class="content">
-          <i class="bi bi-house"></i>
-          <div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div>
-        </div>
-        <div class="content active">
-          <i class="bi bi-box"></i>
-          <div class="text"><a href="{% url 'inventory' %}">Inventario</a></div>
-        </div>
-        <div class="content">
-          <i class="bi bi-files"></i>
-          <div class="text"><a href="{% url 'reports' %}">Reportes</a></div>
-        </div>
-        <!-- Si usas usuarios, descomenta -->
-         <div class="content"><i class="bi bi-people"></i><div class="text"><a href="{% url 'users' %}">Usuarios</a></div></div> 
-        <div class="content"><i class="bi bi-truck"></i><div class="text"><a href="{% url 'orders' %}">Pedidos</a></div></div>
-        <div class="content"><i class="bi bi-cart-check"></i><div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div></div>
-        <div class="content"><i class="bi bi-cart3"></i><div class="text"><a href="{% url 'carrito' %}">Carrito</a></div></div>
-      </div>
-    </div>
-
-    <div class="list-menu-parent">
-      <div class="content"><i class="bi bi-gear"></i><div class="text"><a href="{% url 'settings' %}">Configuración</a></div></div>
-      <div class="content">
-        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-          <button type="submit"><i class="bi bi-door-open"></i> Cerrar sesión</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== APP BAR ===== -->
- <div class="appbar">
-  <div class="crumbs">Inventario / <b>Medicamentos</b></div>
+{% block content %}
+<div class="appbar">
+  <div class="crumbs">Pharmacontrol / <b>Inventario</b></div>
   <div class="spacer"></div>
-  <div class="search position-relative" style="min-width:320px;">
-  <i class="bi bi-search position-absolute" style="left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"></i>
-  <input
-    id="meds-search"
-    type="search"
-    class="form-control form-control-sm ps-4"
-    placeholder="Buscar medicamentos… (nombre, lote, código)"
-    aria-label="Buscar medicamentos"
-    role="combobox"
-    aria-expanded="false"
-    aria-autocomplete="list"
-    aria-controls="meds-results"
-    autocomplete="off"
-    data-url="{% url 'search_meds' %}"
-  >
-  <div
-    id="meds-results"
-    role="listbox"
-    class="list-group shadow-sm"
-    style="position:absolute;top:100%;left:0;right:0;z-index:1050;display:none;max-height:320px;overflow:auto;border-radius:0.75rem;"
-  ></div>
-</div>
 
+  <div class="appbar-search position-relative" style="min-width:340px;">
+    <i class="bi bi-search position-absolute" style="left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"></i>
+    <input
+      id="global-search"
+      type="search"
+      class="form-control form-control-sm ps-4"
+      placeholder="Buscar medicamentos, proveedores, pedidos o ventas…"
+      aria-label="Buscar en el inventario"
+      role="combobox"
+      aria-expanded="false"
+      aria-autocomplete="list"
+      aria-controls="global-results"
+      autocomplete="off"
+      data-url="{% url 'search_inventory' %}"
+    >
+    <div
+      id="global-results"
+      role="listbox"
+      class="list-group shadow-sm"
+      style="position:absolute;top:100%;left:0;right:0;z-index:1050;display:none;max-height:360px;overflow:auto;border-radius:0.75rem;"
+    ></div>
+  </div>
 
   <div class="user">
     <div class="avatar"></div>
     <span class="text-muted-2">Sesión activa</span>
   </div>
-</div> 
+</div>
 
-<!-- ===== CONTENIDO ===== -->
-<div class="contenido">
 
   <!-- Encabezado -->
   <div class="page-header">
@@ -95,14 +49,28 @@
       <div class="title">Inventario de Medicamentos</div>
       <div class="subtitle">Consulta, crea y gestiona el stock de tu farmacia.</div>
     </div>
+
+    <!-- Filtro por stock -->
     <form method="get" class="filters" id="filtro-form">
-  <select class="form-select form-select-sm" name="filtro" id="filtro-select">
-  <option value="all" {% if request.GET.filtro == "all" or not request.GET.filtro %}selected{% endif %}>Todos</option>
-  <option value="stock" {% if request.GET.filtro == "stock" %}selected{% endif %}>Con stock</option>
-  <option value="sin_stock" {% if request.GET.filtro == "sin_stock" %}selected{% endif %}>Sin stock</option>
-  <option value="caducar" {% if request.GET.filtro == "caducar" %}selected{% endif %}>Próximos a caducar</option>
-</select>
-</form>
+      <select class="form-select form-select-sm" name="filtro" id="filtro-select">
+        <option value="all"
+          {% if request.GET.filtro == "all" or not request.GET.filtro %}selected{% endif %}>
+          Todos
+        </option>
+        <option value="stock"
+          {% if request.GET.filtro == "stock" %}selected{% endif %}>
+          Con stock
+        </option>
+        <option value="sin_stock"
+          {% if request.GET.filtro == "sin_stock" %}selected{% endif %}>
+          Sin stock
+        </option>
+        <option value="caducar"
+          {% if request.GET.filtro == "caducar" %}selected{% endif %}>
+          Próximos a caducar
+        </option>
+      </select>
+    </form>
   </div>
 
   <!-- KPIs -->
@@ -129,7 +97,7 @@
     </div>
   </div>
 
-  <!-- Toolbar + Crear -->
+  <!-- Tabla + Crear -->
   <div class="table-card">
     <div class="table-toolbar">
       <div class="actions">
@@ -138,33 +106,52 @@
         </button>
       </div>
     </div>
+
+    <!-- Paginación superior -->
+    {% if page_obj %}
     <nav aria-label="Page navigation" class="mt-3">
-        <ul class="pagination justify-content-center">
-          {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>
-          {% else %}
-            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-          {% endif %}
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ page_obj.previous_page_number }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
+              &laquo;
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        {% endif %}
 
-          {% for num in page_obj.paginator.page_range %}
-            {% if page_obj.number == num %}
-              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-            {% else %}
-              <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-            {% endif %}
-          {% endfor %}
-
-          {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
           {% else %}
-            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+            <li class="page-item">
+              <a class="page-link"
+                 href="?page={{ num }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
+                {{ num }}
+              </a>
+            </li>
           {% endif %}
-        </ul>
-      </nav>
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ page_obj.next_page_number }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
+              &raquo;
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
 
     {% if inventory %}
-      <div class="table-responsive" style="max-height: 520px; overflow:auto;">
-        <table class="table table-striped table-bordered align-middle">
+      <div class="table-responsive">
+        <table id="tabla-meds" class="table table-striped table-bordered align-middle">
           <thead class="table-light">
             <tr>
               <th>Nombre</th>
@@ -216,8 +203,47 @@
         </table>
       </div>
 
-      <!-- Paginación -->
-      
+      <!-- Paginación inferior -->
+      {% if page_obj %}
+      <nav aria-label="Page navigation" class="mt-3">
+        <ul class="pagination justify-content-center">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link"
+                 href="?page={{ page_obj.previous_page_number }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
+                &laquo;
+              </a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% else %}
+              <li class="page-item">
+                <a class="page-link"
+                   href="?page={{ num }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
+                  {{ num }}
+                </a>
+              </li>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link"
+                 href="?page={{ page_obj.next_page_number }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
+                &raquo;
+              </a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
     {% else %}
       <div class="empty">
         <div class="icon">💊</div>
@@ -226,62 +252,180 @@
       </div>
     {% endif %}
   </div>
-
 </div>
 
-<!-- ===== MODAL CREAR ===== -->
-<div class="modal fade" id="crearMedicamentoModal" tabindex="-1" aria-labelledby="crearMedicamentoModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="post" action="{% url 'create_medicamento' %}">
+<!-- Modal crear (puede ir aquí o en base si se usa global) -->
+<!-- Modal crear medicamento -->
+<div class="modal fade" id="crearMedicamentoModal" tabindex="-1"
+     aria-labelledby="crearMedicamentoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <form method="post" action="{% url 'create_medicamento' %}" autocomplete="off">
         {% csrf_token %}
-        <div class="modal-header">
-          <h5 class="modal-title" id="crearMedicamentoModalLabel">Crear Medicamento</h5>
+
+        <!-- Header -->
+        <div class="modal-header border-0 pb-0">
+          <div>
+            <h5 class="modal-title fw-semibold" id="crearMedicamentoModalLabel">
+              Nuevo medicamento
+            </h5>
+            <p class="text-muted small mb-0">
+              Completa la información básica para agregarlo al inventario.
+            </p>
+          </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
 
-        <div class="modal-body">
-          <input type="text" name="nombre" placeholder="Nombre del medicamento" class="form-control mb-2" required>
-          <input type="text" name="lote" placeholder="Lote" class="form-control mb-2" required>
-          <input type="date" name="caducidad" class="form-control mb-2" required>
-          <input type="number" name="stock" placeholder="Cantidad en stock" class="form-control mb-2" required>
-          <input type="number" step="0.01" name="precio" placeholder="Precio" class="form-control mb-2" required>
-          <input type="number" name="proveedor_id" placeholder="ID del proveedor" class="form-control mb-2" required>
-          <input type="number" name="categoria_id" placeholder="ID de la categoría" class="form-control mb-2" required>
+        <!-- Body -->
+        <div class="modal-body pt-3">
+          <p class="text-muted small mb-3">
+            Los campos marcados con <span class="text-danger">*</span> son obligatorios.
+          </p>
+
+          <div class="row g-3">
+            <!-- Nombre -->
+            <div class="col-md-8">
+              <label class="form-label small fw-semibold">
+                Nombre del medicamento <span class="text-danger">*</span>
+              </label>
+              <input type="text"
+                     name="nombre"
+                     class="form-control"
+                     placeholder="Ej. PARACETAMOL 500 MG TAB"
+                     required>
+            </div>
+
+            <!-- Lote -->
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">
+                Lote <span class="text-danger">*</span>
+              </label>
+              <input type="text"
+                     name="lote"
+                     class="form-control"
+                     placeholder="Ej. 650240036415"
+                     required>
+            </div>
+
+            <!-- Caducidad con calendario -->
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">
+                Fecha de caducidad <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="bi bi-calendar-event"></i>
+                </span>
+                <input type="date"
+                       name="caducidad"
+                       class="form-control"
+                       required>
+              </div>
+            </div>
+
+            <!-- Stock -->
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">
+                Stock inicial <span class="text-danger">*</span>
+              </label>
+              <input type="number"
+                     name="stock"
+                     min="0"
+                     class="form-control"
+                     placeholder="Cantidad en piezas"
+                     required>
+            </div>
+
+            <!-- Precio -->
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">
+                Precio unitario <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number"
+                       name="precio"
+                       min="0"
+                       step="0.01"
+                       class="form-control"
+                       placeholder="0.00"
+                       required>
+              </div>
+            </div>
+
+            <!-- Proveedor (con filtro por nombre) -->
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">
+                Proveedor <span class="text-danger">*</span>
+              </label>
+              <input type="text"
+                     id="buscar-proveedor"
+                     class="form-control form-control-sm mb-1"
+                     placeholder="Buscar proveedor por nombre…">
+              <select class="form-select"
+                      name="proveedor_id"
+                      id="proveedor-select"
+                      required>
+                <option value="" disabled selected>Selecciona un proveedor</option>
+                {% for prov in proveedores %}
+                  <option value="{{ prov.id }}">{{ prov.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Categoría (con filtro por nombre) -->
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">
+                Categoría <span class="text-danger">*</span>
+              </label>
+              <input type="text"
+                     id="buscar-categoria"
+                     class="form-control form-control-sm mb-1"
+                     placeholder="Buscar categoría por nombre…">
+              <select class="form-select"
+                      name="categoria_id"
+                      id="categoria-select"
+                      required>
+                <option value="" disabled selected>Selecciona una categoría</option>
+                {% for cat in categorias %}
+                  <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
 
           {% if error %}
-            <p class="text-danger mb-0">{{ error }}</p>
+            <div class="alert alert-danger mt-3 mb-0 py-2 small">
+              {{ error }}
+            </div>
           {% endif %}
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn-brand">Crear</button>
+        <!-- Footer -->
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-brand">
+            Guardar medicamento
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- ===== CHATBOT FLOATING ===== -->
-<button id="chatbot-toggle" class="btn-brand" style="position: fixed; bottom: 20px; right: 20px; border-radius:50%; width:56px; height:56px; padding:0; z-index:1000;">
-  💬
-</button>
-<iframe id="chatbot-frame" src="http://127.0.0.1:8000" style="position: fixed; bottom: 80px; right: 20px; width: 360px; height: 520px; border: none; border-radius: 12px; display: none; z-index: 1000; box-shadow: 0 0 18px rgba(0,0,0,.2);"></iframe>
+{% endblock %}
 
-<!-- JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}
+
 <script>
-  // Toggle chatbot
-  const toggleBtn = document.getElementById('chatbot-toggle');
-  const chatbotFrame = document.getElementById('chatbot-frame');
-  toggleBtn.addEventListener('click', () => {
-    chatbotFrame.style.display = chatbotFrame.style.display === 'none' ? 'block' : 'none';
-  });
-  document.getElementById('filtro-select').addEventListener('change', function() {
-    document.getElementById('filtro-form').submit();
+  // Auto-submit de filtro al cambiar opción
+  document.getElementById('filtro-select')?.addEventListener('change', function() {
+    document.getElementById('filtro-form')?.submit();
   });
 </script>
+
 <script>
 (() => {
   const $inp = document.getElementById('meds-search');
@@ -292,7 +436,7 @@
   const strip = s => (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 
   let activeIndex = -1;
-  const url = $inp.dataset.url || '/inventario/meds/search';
+  const url = $inp.dataset.url || '/inventario/search/';
 
   function hideBox(){ $box.style.display='none'; $box.innerHTML=''; activeIndex=-1; $inp.setAttribute('aria-expanded','false'); }
   function showBox(){ if($box.innerHTML.trim()){ $box.style.display='block'; $inp.setAttribute('aria-expanded','true'); } }
@@ -314,12 +458,12 @@
     showBox();
   }
 
-  // Filtro local sobre la tabla si el backend no responde
+  // Filtro local sobre la tabla si la API falla
   function filterTableLocally(q){
-    const tb = document.getElementById('tabla-meds') || document.querySelector('table tbody');
+    const tb = document.getElementById('tabla-meds');
     if(!tb) return;
     const qn = strip(q);
-    [...tb.querySelectorAll('tr')].forEach(tr=>{
+    tb.querySelectorAll('tbody tr').forEach(tr=>{
       const txt = strip(tr.textContent);
       tr.style.display = txt.includes(qn) ? '' : 'none';
     });
@@ -328,15 +472,17 @@
   const doSearch = debounce(async (q) => {
     if(!q || q.trim().length < 2){ hideBox(); filterTableLocally(''); return; }
     try {
-      const resp = await fetch(`${url}?q=${encodeURIComponent(q.trim())}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-      if(resp.status === 401) { // sin JWT en sesión → filtra local
+      const resp = await fetch(`${url}?q=${encodeURIComponent(q.trim())}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if(resp.status === 401) {
         filterTableLocally(q); hideBox(); return;
       }
       if(!resp.ok) throw new Error('HTTP '+resp.status);
       const data = await resp.json();
       const items = Array.isArray(data.results) ? data.results : [];
       if(items.length) render(items);
-      else { hideBox(); filterTableLocally(q); } // sin matches de API → intenta local
+      else { hideBox(); filterTableLocally(q); }
     } catch(e){
       console.warn('meds-search fallback local', e);
       hideBox(); filterTableLocally(q);
@@ -345,9 +491,12 @@
 
   $inp.addEventListener('input', e => doSearch(e.target.value));
   $inp.addEventListener('focus', ()=> { if($box.innerHTML.trim()) showBox(); });
-  document.addEventListener('click', (e)=> { if(!( $box.contains(e.target) || $inp.contains(e.target) )) hideBox(); });
 
-  // Teclado: ↑ ↓ Enter Esc
+  document.addEventListener('click', (e)=> {
+    if(!( $box.contains(e.target) || $inp.contains(e.target) )) hideBox();
+  });
+
+  // Teclas ↑ ↓ Enter Esc
   $inp.addEventListener('keydown', (e)=>{
     const links = [...$box.querySelectorAll('a.list-group-item')];
     if(!links.length) return;
@@ -356,6 +505,7 @@
     if(e.key === 'Enter'){ if(activeIndex>=0){ e.preventDefault(); links[activeIndex].click(); } }
     if(e.key === 'Escape'){ hideBox(); }
   });
+
   function highlight(links){
     links.forEach(a=>a.classList.remove('active'));
     if(activeIndex>=0 && links[activeIndex]) {
@@ -366,5 +516,37 @@
   }
 })();
 </script>
-</body>
-</html>
+<script>
+  function setupSelectFilter(inputId, selectId) {
+    const input  = document.getElementById(inputId);
+    const select = document.getElementById(selectId);
+    if (!input || !select) return;
+
+    // Guardamos las opciones originales
+    const originalOptions = Array.from(select.options);
+
+    input.addEventListener('input', () => {
+      const term = input.value.trim().toLowerCase();
+
+      // Reseteamos el select
+      select.innerHTML = '';
+      originalOptions.forEach(opt => {
+        if (!term || opt.text.toLowerCase().includes(term)) {
+          select.appendChild(opt);
+        }
+      });
+
+      // Mantener siempre una opción placeholder arriba si no hay término
+      if (!term && select.options.length > 0) {
+        select.selectedIndex = 0;
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    setupSelectFilter('buscar-proveedor', 'proveedor-select');
+    setupSelectFilter('buscar-categoria', 'categoria-select');
+  });
+</script>
+
+{% endblock %}
