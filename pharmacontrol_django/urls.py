@@ -25,15 +25,11 @@ urlpatterns = [
 
     # Reportes / Pedidos / Config
     path('report/', core.report_view, name='reports'),
-    path('order/', core.order_view, name='orders'),
+    path('order/', core.orders_view, name='orders'),
     path('settings/', core.settings_view, name='settings'),  # si tienes una view específica de settings, cámbiala aquí
 
     # Proveedores
-    path('supplier/', core.supplier_view, name='suppliers'),           # listado
-    path('proveedores/', core.supplier_view, name='suppliers_alt'),    # alias opcional (borra si no lo usas)
-    path('proveedores/agregar/', core.add_supplier_view, name='add_supplier'),
-    path('proveedores/editar/<int:id>/', core.edit_supplier_view, name='edit_supplier'),
-    path('proveedores/eliminar/<int:id>/', core.delete_supplier_view, name='delete_supplier'),
+    path('suppliers/', core.supplier_view, name='suppliers'),           # listado
 
     # # Usuarios
     path('user/', core.user_view, name='users'),
@@ -65,6 +61,40 @@ urlpatterns = [
     # Catálogos
     path("orders/api/farmacias/", core.farmacias_json, name="farmacias_json"),
     path("orders/api/proveedores/<int:prov_id>/medicamentos/", core.proveedor_medicamentos_json, name="proveedor_medicamentos_json"),
+
+## --- API para Proveedores (Suppliers) ---
+    path(
+        'api/proveedores/',
+        core.proveedores_list_create_json,
+        name='proveedores_list_json'
+    ),  # GET (list), POST (create)
+
+    path(
+        'api/proveedores/create/',
+        core.proveedores_list_create_json,
+        name='proveedor_create_json'
+    ),  # Alias para POST
+
+    # Detalle
+    path(
+        'api/proveedores/<int:id>/',
+        core.proveedor_detail_json,
+        name='proveedor_detail_json'
+    ),  # GET (detail)
+
+    # Update
+    path(
+        'api/proveedores/<int:id>/update/',
+        core.proveedor_update_json,
+        name='proveedor_update_json'
+    ),  # PUT/PATCH
+
+    # Delete
+    path(
+        'api/proveedores/<int:id>/delete/',
+        core.proveedor_delete_json,
+        name='proveedor_delete_json'
+    ),  # DELETE
 
     path('inventario/search/', core.search_inventory, name='search_inventory'),
     path('inventario/search',  core.search_inventory), 

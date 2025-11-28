@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Inventario de Medicamentos · Pharmacontrol{% endblock %}
+{% block title %}Inventario · Pharmacontrol{% endblock %}
 
 {% block head_extra %}
   {# Si necesitas algo extra, como Chart.js, va aquí #}
@@ -152,7 +152,7 @@
     {% if inventory %}
       <div class="table-responsive">
         <table id="tabla-meds" class="table table-striped table-bordered align-middle">
-          <thead class="table-light">
+          <thead>
             <tr>
               <th>Nombre</th>
               <th>Lote</th>

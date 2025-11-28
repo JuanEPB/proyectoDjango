@@ -7,7 +7,7 @@
 :root{
   --bg: #f5f7fb;           /* fondo suave de app */
   --panel: #ffffff;        /* cards / tablas / módulos */
-  --text: #0f172a;         /* texto principal */
+  --text: #1f2933;
   --muted: #64748b;        /* texto secundario */
   --subtle: #94a3b8;       /* ayuda, hints */
   --border: #e6e8ee;       /* bordes suaves */
@@ -15,7 +15,7 @@
 
   --brand: #1570EF;        /* azul principal */
   --brand-600: #1e66d0;    /* hover */
-  --success: #22c55e;
+  --success: #129f46ff;
   --warn: #f59e0b;
   --danger: #ef4444;
   --info: #0ea5e9;
@@ -33,6 +33,19 @@
   --kpi-down: #fee2e2;
 }
 
+/* --------- Modo Oscuro --------- */
+html[data-theme="dark"] {
+  --bg: #0b1220;
+  --panel: #0f172a;
+  --text: #e5e7eb;
+  --muted: #9aa4b2;
+  --border: #1e293b;
+  --sidebar-bg: #0b1220;
+  --sidebar-active: #142033;
+  --sidebar-text: #dbeafe;
+  --shadow: 0 8px 30px rgba(0,0,0,.3);
+}
+
 
 
 /* -------- Reset suave -------- */
@@ -44,6 +57,11 @@ body{
   color:var(--text); background:var(--bg);
   line-height:1.45;
 }
+body{
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
 
 /* ===============================
    App Bar (nuevo)
@@ -257,6 +275,11 @@ body{
   border-radius:8px;
 }
 @keyframes shimmer{ 0%{background-position:100% 0} 100%{background-position:0 0} }
+html[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #293548 37%, #1e293b 63%);
+  background-size: 400% 100%;
+}
+
 
 /* ===============================
    Utilidades
@@ -458,7 +481,7 @@ body{
 
 
 /* --------- Modo Oscuro --------- */
-html[theme="dark"] {
+html[data-theme="dark"] {
   --bg: #0b1220;
   --panel: #0f172a;
   --text: #e5e7eb;
@@ -527,4 +550,209 @@ body.auth-body{ overflow:auto; }
 @media (max-width: 860px){
   .auth-card{ grid-template-columns: 1fr; }
   .auth-right{ display:none; }
+}
+
+
+/* ===============================
+   DARK THEME POLISH · Pharmacontrol
+   (overrides para que todo se vea bonito)
+   =============================== */
+
+/* Ajuste general de cards y layout en dark */
+html[data-theme="dark"] .appbar{
+  background: var(--panel);
+  border-bottom-color: var(--border);
+}
+
+html[data-theme="dark"] .contenido{
+  background: var(--bg);
+}
+
+/* Appbar: buscador y chip de sesión menos blancos */
+html[data-theme="dark"] .appbar .search{
+  background: var(--panel);
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .appbar .search input{
+  color: var(--text);
+  background: transparent !important;
+}
+
+html[data-theme="dark"] .appbar .user{
+  background: var(--panel);
+  border-color: var(--border) !important;
+}
+
+/* Buttons fantasma coherentes en dark */
+html[data-theme="dark"] .btn-ghost{
+  background: #020617;
+  border-color: var(--border);
+  color: var(--text);
+}
+html[data-theme="dark"] .btn-ghost:hover,
+html[data-theme="dark"] .btn-outline-secondary:hover {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+/* Chips de stock / estados */
+html[data-theme="dark"] .chip{
+  background: #020617;
+  border-color: #1e293b;
+  color: var(--muted);
+}
+html[data-theme="dark"] .chip.ok{
+  background: rgba(34,197,94,.08);
+  border-color: rgba(34,197,94,.45);
+  color: #bbf7d0;
+}
+html[data-theme="dark"] .chip.warn{
+  background: rgba(245,158,11,.1);
+  border-color: rgba(245,158,11,.55);
+  color: #fed7aa;
+}
+html[data-theme="dark"] .chip.danger{
+  background: rgba(239,68,68,.1);
+  border-color: rgba(239,68,68,.55);
+  color: #fecaca;
+}
+
+/* Tablas: encabezados y hover adaptados al dark */
+html[data-theme="dark"] .table thead th{
+  background: var(--panel);
+  color: var(--text);
+  border-bottom-color: var(--border);
+}
+html[data-theme="dark"] .table tbody tr:hover{
+  background: #1e293b;
+}
+
+/* Cards y contenedores de tabla un poco más “elevados” */
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .table-card{
+  background: var(--panel);
+  border-color: #1f2937;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}
+
+/* Sidebar: resaltar mejor el item activo */
+html[data-theme="dark"] .content.active{
+  background: linear-gradient(90deg,#1e293b,#0f172a);
+  color: #e5e7eb;
+}
+
+/* Formularios: inputs menos blancos en dark */
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] .form-select{
+  background: var(--panel);
+  border-color: #1f2937;
+  color: var(--text);
+}
+html[data-theme="dark"] .form-control::placeholder{
+  color: var(--muted);
+}
+html[data-theme="dark"] .form-control:focus,
+html[data-theme="dark"] .form-select:focus{
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 2px rgba(37,99,235,.4);
+}
+
+/* Modales/Dialogs en dark */
+html[data-theme="dark"] dialog {
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+/* ======================================
+   FIX · Tablas y vista de usuarios en dark
+   ====================================== */
+
+/* Fondo base de tabla en dark: que no sea blanco de Bootstrap */
+html[data-theme="dark"] .table {
+  background-color: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Bordes de celdas */
+html[data-theme="dark"] .table th,
+html[data-theme="dark"] .table td {
+  border-color: var(--border);
+}
+
+/* Encabezados (por si Bootstrap mete otro color) */
+html[data-theme="dark"] .table thead th {
+  background-color: var(--panel) !important;
+  color: var(--text) !important;
+}
+
+/* Filas alternadas de .table-striped */
+html[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: #020617 !important;
+}
+
+/* Hover en filas de cualquier tabla */
+html[data-theme="dark"] .table-hover > tbody > tr:hover,
+html[data-theme="dark"] .table tbody tr:hover {
+  background-color: #111827 !important;
+}
+
+/* Paginación debajo de tablas (números) */
+html[data-theme="dark"] .pagination .page-link {
+  background-color: #020617;
+  border-color: var(--border);
+  color: var(--text);
+}
+html[data-theme="dark"] .pagination .page-item.active .page-link {
+  background-color: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+/* Card que envuelve tablas (por ejemplo en Usuarios) */
+html[data-theme="dark"] .table-card,
+html[data-theme="dark"] .card .table {
+  background-color: transparent;
+}
+
+
+/* ===================================================
+   FIX · Componentes Bootstrap y otros en dark
+   =================================================== */
+
+/* Modales de Bootstrap (usados en Inventario) */
+html[data-theme="dark"] .modal-content {
+  background-color: var(--panel);
+  border-color: var(--border);
+  color: var(--text);
+}
+html[data-theme="dark"] .modal-header,
+html[data-theme="dark"] .modal-footer {
+  border-color: var(--border);
+}
+
+/* List Groups (usados en Reportes y búsqueda de Inventario) */
+html[data-theme="dark"] .list-group-item {
+  background-color: var(--panel);
+  border-color: var(--border);
+  color: var(--text);
+}
+html[data-theme="dark"] .list-group-item-action:hover,
+html[data-theme="dark"] .list-group-item-action:focus {
+  background-color: #1e293b;
+}
+
+/* Input Group Addons (ej. icono de calendario, símbolo '$') */
+html[data-theme="dark"] .input-group-text {
+  background-color: #1e293b;
+  border-color: var(--border);
+  color: var(--muted);
+}
+html[data-theme="dark"] .main-content {
+  background: transparent;
 }

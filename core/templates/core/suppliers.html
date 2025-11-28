@@ -1,0 +1,391 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Proveedores · Pharmacontrol{% endblock %}
+
+{% block head_extra %}
+  {# Si necesitas algo extra, como Chart.js, va aquí #}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="appbar">
+  <div class="crumbs">Gestión / <b>Proveedores</b></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <i class="bi bi-search"></i>
+    <input id="q" class="form-control form-control-sm" placeholder="Buscar proveedor…">
+  </div>
+  <div class="user">
+    <div class="avatar"></div>
+    <span class="text-muted-2">Sesión activa</span>
+  </div>
+</div>
+
+  <div id="alertBox" class="alert d-none" role="alert" style="position: sticky; top: 1rem; z-index: 1056;"></div>
+  <div class="page-header d-flex justify-content-between align-items-start">
+    <div class="me-3">
+      <div class="title">Proveedores</div>
+      <div class="subtitle">Administra el catálogo de proveedores y su estatus.</div>
+    </div>
+    <div class="filters d-flex gap-2 align-items-center">
+      <select id="fStatus" class="form-select form-select-sm" style="max-width:180px">
+        <option value="">Todos</option>
+        <option value="true" selected>Activos</option>
+        <option value="false">Inactivos</option>
+      </select>
+      <button id="btnNuevo" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Nuevo proveedor</button>
+    </div>
+  </div>
+
+  <!-- Tabla dinámica -->
+  <div class="table-card">
+    <div class="table-responsive" style="max-height:520px;overflow:auto;">
+      <table class="table table-striped table-bordered align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Contacto</th>
+            <th>Teléfono</th>
+            <th>Correo</th>
+            <th>Estatus</th>
+            <th style="width:180px">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" class="empty d-none">
+      <div class="icon">👥</div><div>No hay proveedores registrados.</div>
+    </div>
+  </div>
+
+<!-- MODAL (nativo) NUEVO / EDITAR PROVEEDOR -->
+<dialog id="dlgForm" class="rounded-2xl p-0" style="width: 600px; border: none;">
+  <form id="frmProveedor" method="dialog" class="p-4" autocomplete="off">
+    <input type="hidden" id="id" name="id">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 id="dlgTitle" class="h5 m-0">Nuevo proveedor</h2>
+      <button type="button" id="btnClose" class="btn-close" aria-label="Cerrar"></button>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-12">
+        <label for="nombre" class="form-label">Nombre del proveedor</label>
+        <input type="text" id="nombre" name="nombre" class="form-control" required>
+      </div>
+      <div class="col-md-6">
+        <label for="telefono" class="form-label">Teléfono</label>
+        <input type="tel" id="telefono" name="telefono" class="form-control">
+      </div>
+      <div class="col-12">
+        <label for="email" class="form-label">Correo electrónico</label>
+        <input type="email" id="email" name="email" class="form-control">
+      </div>
+      <div class="col-12">
+        <label for="direccion" class="form-label">Dirección</label>
+        <textarea id="direccion" name="direccion" class="form-control" rows="2"></textarea>
+      </div>
+      <div class="col-12">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="activo" name="activo" checked>
+          <label class="form-check-label" for="activo">Proveedor activo</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-end">
+      <button id="btnSave" type="submit" class="btn btn-primary">Crear proveedor</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Endpoints Django (views) para proveedores -->
+<script>
+  window.SUPPLIERS_ENDPOINTS = {
+    list:   "{% url 'proveedores_list_json' %}",
+    create: "{% url 'proveedor_create_json' %}",
+    detail: (id) => "{% url 'proveedor_detail_json' 0 %}".replace('/0/', '/' + id + '/'),
+    update: (id) => "{% url 'proveedor_update_json' 0 %}".replace('/0/', '/' + id + '/'),
+    delete: (id) => "{% url 'proveedor_delete_json' 0 %}".replace('/0/', '/' + id + '/'),
+  };
+</script>
+
+<script>
+// ---- CSRF ----
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+const CSRF_TOKEN = getCookie('csrftoken');
+
+const EP = window.SUPPLIERS_ENDPOINTS;
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+let suppliersMap = new Map(); // Para acceso rápido a datos de proveedores por ID
+const showAlert = (msg, type = "success") => {
+  const box = $("#alertBox");
+  if (!box) return;
+  box.textContent = msg;
+  box.className = `alert alert-${type}`;
+  box.classList.remove("d-none");
+  setTimeout(() => box.classList.add("d-none"), 4000);
+};
+
+const setBtnLoading = (btn, loading, text = 'Guardando...') => {
+  if (!btn) return;
+  if (loading) {
+    btn.disabled = true;
+    btn.dataset.originalText = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> ${text}`;
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.originalText) btn.innerHTML = btn.dataset.originalText;
+  }
+};
+
+let debounceTimer;
+const debounce = (func, delay) => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(func, delay);
+};
+
+// ---------- LISTA DE PROVEEDORES ----------
+// suppliers.html
+async function cargarLista() {
+  const q = $("#q")?.value || '';
+  const status = $("#fStatus")?.value || '';
+  const tb = $("#tbody");
+
+  const url = new URL(EP.list, window.location.origin);
+  if (q) url.searchParams.append('q', q);
+  if (status) url.searchParams.append('status', status);
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Error ${res.status}: No se pudo conectar con el servidor.`);
+    
+    const rows = await res.json();
+    tb.innerHTML = '';
+    suppliersMap.clear();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      $("#emptyState")?.classList.remove('d-none');
+      return;
+    }
+
+    $("#emptyState")?.classList.add('d-none');
+
+    rows.forEach(p => suppliersMap.set(String(p.id), p));
+
+    rows.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.dataset.id = p.id;
+
+      const contactoCompleto = p.contacto || '';
+      const telMatch = contactoCompleto.match(/Teléfono: ([^,]+)/);
+      const emailMatch = contactoCompleto.match(/Email: (.+)/);
+
+      const telefono = telMatch ? telMatch[1].trim() : '';
+      const email = emailMatch ? emailMatch[1].trim() : '';
+
+      tr.innerHTML = `
+        <td>#${p.id}</td>
+        <td>${p.nombre || '-'}</td>
+        <td>${contactoCompleto || '-'}</td>
+        <td>${telefono || '-'}</td>
+        <td>${email || '-'}</td>
+        <td>${p.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip warn">Inactivo</span>'}</td>
+        <td class="text-nowrap">
+          <button class="btn btn-sm btn-ghost btn-edit" title="Editar"><i class="bi bi-pencil-square"></i></button>
+          <button class="btn btn-sm btn-ghost btn-toggle-status" title="${p.activo ? 'Desactivar' : 'Activar'}">
+            ${p.activo ? '<i class="bi bi-toggle-off"></i>' : '<i class="bi bi-toggle-on"></i>'}
+          </button>
+          <button class="btn btn-sm btn-ghost text-danger btn-delete" title="Eliminar"><i class="bi bi-trash"></i></button>
+        </td>`;
+      tb.appendChild(tr);
+    });
+  } catch (error) {
+    console.error("Error al cargar proveedores:", error.message);
+    showAlert(`Error al cargar proveedores: ${error.message}`, 'danger');
+    $("#emptyState")?.classList.add('d-none');
+  }
+}
+
+
+// ---------- MODAL Y FORMULARIO ----------
+const dlg = $("#dlgForm");
+const form = $("#frmProveedor");
+
+function openModal(proveedor = null) {
+  form.reset();
+  const isUpdate = !!proveedor;
+  $("#dlgTitle").textContent = isUpdate ? "Editar proveedor" : "Nuevo proveedor";
+  $("#btnSave").textContent = isUpdate ? "Guardar cambios" : "Crear proveedor";
+  $("#id").value = isUpdate ? proveedor.id : '';
+  if (isUpdate) {
+    Object.keys(proveedor).forEach(key => {
+      const el = form.elements[key];
+      if (el) el.type === 'checkbox' ? el.checked = proveedor[key] : el.value = proveedor[key] || '';
+    });
+
+    // Separar el campo 'contacto' en teléfono y email para el formulario
+    const contactoCompleto = proveedor.contacto || '';
+    const telMatch = contactoCompleto.match(/Teléfono: ([^,]+)/);
+    const emailMatch = contactoCompleto.match(/Email: (.+)/);
+    
+    const telefonoInput = form.elements['telefono'];
+    const emailInput = form.elements['email'];
+    if (telefonoInput) telefonoInput.value = telMatch ? telMatch[1].trim() : '';
+    if (emailInput) emailInput.value = emailMatch ? emailMatch[1].trim() : '';
+  }
+  dlg.showModal();
+}
+
+async function handleSave(e) {
+  e.preventDefault();
+  const id = $("#id").value;
+  const isUpdate = !!id;
+
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+  payload.activo = $("#activo").checked; // FormData no maneja bien los checkboxes no marcados
+
+  if (!payload.nombre) {
+    showAlert('El nombre del proveedor es obligatorio.', 'warning');
+    return;
+  }
+
+  const url = isUpdate ? EP.update(id) : EP.create;
+  const method = isUpdate ? 'PUT' : 'POST';
+
+  const btn = $("#btnSave");
+  setBtnLoading(btn, true);
+
+  // Helper para parsear errores de la API
+  const parseError = async (response) => {
+    try {
+      const data = await response.json();
+      // Prioriza el campo 'detail', luego 'error', o un mensaje genérico.
+      return data.detail || data.error || `Error ${response.status}`;
+    } catch {
+      return `Error ${response.status}: No se pudo procesar la respuesta del servidor.`;
+    }
+  };
+
+  const res = await fetch(url, {
+    method: method,
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    body: JSON.stringify(payload)
+  });
+
+  setBtnLoading(btn, false);
+
+  if (!res.ok) {
+    const errorMsg = await parseError(res);
+    showAlert(errorMsg, 'danger');
+    return;
+  }
+
+  dlg.close();
+  showAlert(`Proveedor ${isUpdate ? 'actualizado' : 'creado'} correctamente.`, 'success');
+  await cargarLista();
+}
+
+async function handleDelete(id) {
+  if (!confirm(`¿Estás seguro de que quieres eliminar el proveedor #${id}? Esta acción no se puede deshacer.`)) return;
+
+  const res = await fetch(EP.delete(id), {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': CSRF_TOKEN }
+  });
+
+  if (!res.ok) {
+    showAlert('No se pudo eliminar el proveedor.', 'danger');
+    return;
+  }
+
+  showAlert('Proveedor eliminado correctamente.', 'success');
+  await cargarLista();
+}
+
+async function handleToggleStatus(id, currentStatus, btn) {
+  const newStatus = !currentStatus;
+  const actionText = newStatus ? 'activar' : 'desactivar';
+  if (!confirm(`¿Confirmas que quieres ${actionText} este proveedor?`)) return;
+
+  setBtnLoading(btn, true, '...');
+  const res = await fetch(EP.update(id), {
+      method: 'PATCH', // Usamos PATCH para actualizaciones parciales
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ activo: newStatus })
+  });
+  setBtnLoading(btn, false);
+
+  if (!res.ok) {
+      showAlert(`No se pudo ${actionText} el proveedor.`, 'danger');
+      return;
+  }
+  showAlert(`Proveedor ${actionText}do correctamente.`, 'success');
+  await cargarLista();
+}
+
+// ---------- EVENT LISTENERS ----------
+document.addEventListener('DOMContentLoaded', () => {
+  cargarLista();
+
+  $("#q")?.addEventListener('input', () => debounce(cargarLista, 300));
+  $("#fStatus")?.addEventListener('change', cargarLista);
+
+  $("#btnNuevo")?.addEventListener('click', () => openModal());
+  $("#btnClose")?.addEventListener('click', () => dlg.close());
+  form?.addEventListener('submit', handleSave);
+
+  $("#tbody").addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    const tr = btn.closest('tr');
+    const id = tr?.dataset.id;
+    if (!id) return;
+
+    if (btn.classList.contains('btn-edit')) {
+      const proveedor = suppliersMap.get(id);
+      if (proveedor) {
+        openModal(proveedor);
+      } else {
+        showAlert('No se encontró el proveedor para editar. Intenta recargar la página.', 'warning');
+      }
+    }
+
+    if (btn.classList.contains('btn-delete')) {
+      handleDelete(id);
+    }
+
+    if (btn.classList.contains('btn-toggle-status')) {
+      const currentStatus = btn.querySelector('i').classList.contains('bi-toggle-off');
+      handleToggleStatus(id, currentStatus, btn);
+    }
+  });
+});
+</script>
+
+
+{% endblock %}

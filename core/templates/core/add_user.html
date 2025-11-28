@@ -25,7 +25,7 @@
   </div>
 
   <!-- Card del formulario -->
-  <div class="card span-8" style="max-width:880px;">
+  <div class="form-container-card span-8" style="max-width:880px;">
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h4 class="mb-0">Datos del usuario</h4>
       <span class="badge-soft">Farmacia actual: se asigna automáticamente</span>
@@ -131,10 +131,10 @@
       </div>
 
       <div class="col-12 d-flex gap-2 mt-3">
-        <a href="{% url 'users' %}" class="btn-ghost">
+        <a href="{% url 'users' %}" class="btn btn-light">
           <i class="bi bi-arrow-left"></i> Cancelar
         </a>
-        <button type="submit" class="btn-brand">
+        <button type="submit" class="btn btn-brand">
           <i class="bi bi-check2-circle"></i> Guardar usuario
         </button>
       </div>

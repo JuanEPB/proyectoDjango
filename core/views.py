@@ -1,6 +1,7 @@
 # views.py
 import json
 from datetime import datetime, date, timedelta
+import base64
 from collections import Counter
 import requests
 import unicodedata
@@ -11,10 +12,11 @@ from django.shortcuts import render, redirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from django.contrib import messages
+from django.contrib import messages, auth
 from core.decorators import login_required_custom
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.views.decorators.http import require_http_methods 
 
 from django.conf import settings
 from api_client import API_BASE_URL  
@@ -26,6 +28,7 @@ from django.core.mail import get_connection, EmailMessage, EmailMultiAlternative
 from django.template.loader import render_to_string
 from django.core.cache import cache
 from django.core.validators import validate_email
+from functools import wraps
 from django.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -48,11 +51,11 @@ API = {
     "users_create": f"{NEST_BASE}/api/users/create",
     "users_update": f"{NEST_BASE}/api/users/update",  # /:id
     "users_delete": f"{NEST_BASE}/api/users/delete",  # /:id
-    "prov_all":     f"{NEST_BASE}/api/proveedores/all",
-    "prov_meds":     f"{NEST_BASE}/api/proveedores",  # /:id
-    "prov_create":  f"{NEST_BASE}/api/proveedores/create",
-    "prov_update":  f"{NEST_BASE}/api/proveedores/update",  # /:id
-    "prov_delete":  f"{NEST_BASE}/api/proveedores/delete",  # /:id
+    "prov_list":   f"{NEST_BASE}/api/proveedores/all",
+    "prov_create": f"{NEST_BASE}/api/proveedores/create/",          # POST
+    "prov_detail": f"{NEST_BASE}/api/proveedores",          # /:id
+    "prov_update": f"{NEST_BASE}/api/proveedores/update/",  # /:id
+    "prov_delete": f"{NEST_BASE}/api/proveedores/delete/",  # /:id
     "venta":        f"{NEST_BASE}/api/venta",
     "cats_all":     f"{NEST_BASE}/api/categorias/all",
     "farm_all":     f"{NEST_BASE}/api/farmacia",
@@ -83,7 +86,7 @@ VENTAS_GET       = f"{NEST_BASE}/api/ventas"                  # .../:id
 API.update({
     "meds_search": f"{NEST_BASE}/api/medicamentos/all",  # si existe en Nest
     "meds_all":    API.get("meds_all") or f"{NEST_BASE}/api/medicamentos/all", # recomendado
-    "prov_search":   f"{NEST_BASE}/api/proveedores/all",
+    "prov_search": f"{NEST_BASE}/api/proveedores/all",
     "orders_search": f"{NEST_BASE}/api/pedidos",
     "ventas_search": f"{NEST_BASE}/api/ventas/search",
     "ventas_all":    f"{NEST_BASE}/api/ventas",               # fallback
@@ -95,12 +98,18 @@ API.update({
 def _auth_headers(request):
     token = request.session.get("jwt")
     headers = {"Accept": "application/json"}
+    # El content-type se añade en las funciones _post, _put, _patch
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return headers
 
-def _get(request, url):
+def _get(request, url, params=None):
     try:
+        # Añadir parámetros a la URL si existen
+        if params:
+            # Filtra valores None o vacíos
+            filtered_params = {k: v for k, v in params.items() if v is not None and v != ''}
+            url = f"{url}?{urllib.parse.urlencode(filtered_params)}"
         r = requests.get(url, headers=_auth_headers(request), timeout=10)
         if r.status_code == 401:
             return "unauthorized", []
@@ -113,21 +122,45 @@ def _get(request, url):
 
 def _post(request, url, payload):
     try:
-        r = requests.post(url, json=payload, headers=_auth_headers(request), timeout=10)
+        headers = _auth_headers(request)
+        headers['Content-Type'] = 'application/json'
+        logger.info("POST -> %s payload=%s", url, payload)
+        r = requests.post(url, json=payload, headers=headers, timeout=10)
         if r.status_code == 401:
             return "unauthorized", None
         return None, r
-    except requests.RequestException:
-        return None, None
+    except requests.RequestException as e:
+        logger.exception("Error llamando POST %s: %s", url, e)
+
+        class DummyResponse:
+            ok = False
+            status_code = 502
+            text = str(e)
+        return None, DummyResponse()
+
 
 def _put(request, url, payload):
     try:
-        r = requests.put(url, json=payload, headers=_auth_headers(request), timeout=10)
+        headers = _auth_headers(request)
+        headers['Content-Type'] = 'application/json'
+
+        logger.info("PUT -> %s", url)
+        r = requests.put(url, json=payload, headers=headers, timeout=10)
+
         if r.status_code == 401:
             return "unauthorized", None
+
         return None, r
-    except requests.RequestException:
-        return None, None
+    except requests.RequestException as e:
+        logger.exception("Error llamando PUT %s: %s", url, e)
+
+        # Devolvemos un objeto similar a Response para que la vista no truene
+        class DummyResponse:
+            ok = False
+            status_code = 502
+            text = str(e)
+        return None, DummyResponse()
+
 
 def _delete(request, url):
     try:
@@ -153,7 +186,9 @@ def _parse_date(s):
 
 def _patch(request, url, payload):
     try:
-        r = requests.patch(url, json=payload, headers=_auth_headers(request), timeout=10)
+        headers = _auth_headers(request)
+        headers['Content-Type'] = 'application/json'
+        r = requests.patch(url, json=payload, headers=headers, timeout=10)
         if r.status_code == 401:
             return "unauthorized", None
         return None, r
@@ -190,27 +225,59 @@ def bridge_clear_token(request):
 @csrf_exempt
 def bridge_store_token(request):
     """
-    Guarda el accessToken en la sesión de Django.
+    Guarda el accessToken en la sesión de Django y extrae el rol del usuario.
     """
     try:
         data = json.loads(request.body or "{}")
         token = data.get("accessToken")
         if not token:
             return HttpResponseBadRequest("no token")
-        
+
         # Guardar en sesión
         request.session["jwt"] = token
+
+        # --- INICIO DE LA SOLUCIÓN ---
+        # Decodificar el payload del JWT para obtener el rol
+        try:
+            # Un JWT tiene 3 partes separadas por '.'. El payload es la segunda.
+            payload_b64 = token.split('.')[1]
+            # El payload en base64 puede no tener el padding correcto, lo añadimos.
+            payload_b64 += '=' * (-len(payload_b64) % 4)
+            # Decodificamos de base64 a bytes, y luego de bytes a string (utf-8)
+            payload_json = base64.b64decode(payload_b64).decode('utf-8')
+            # Parseamos el string JSON a un diccionario de Python
+            payload_data = json.loads(payload_json)
+            # Guardamos el rol en la sesión. Asumimos que el campo se llama 'rol'.
+            request.session["user_role"] = payload_data.get("rol")
+        except Exception as e:
+            # Si falla la decodificación, no asignamos rol y lo registramos.
+            logger.error(f"Error decodificando JWT para obtener rol: {e}")
+            request.session["user_role"] = None
+        # --- FIN DE LA SOLUCIÓN ---
+
         request.session.modified = True
-        
-        # Forzar guardado inmediato
-        request.session.save()
-        
         return JsonResponse({"ok": True})
     except Exception as e:
         logger.error(f"Error storing token: {e}")
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
 
 
+# =========================
+# Decoradores de Seguridad
+# =========================
+def role_required(*roles):
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            if not request.session.get("jwt"):
+                return redirect("login")
+            user_role = request.session.get("user_role")
+            if user_role not in roles:
+                messages.error(request, "No tienes permiso para acceder a esta página.")
+                return redirect("medicamentos") # Redirigir al dashboard por defecto
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
 # =========================
 # Public Pages (Home, etc.)
 # =========================
@@ -368,7 +435,7 @@ def logout_view(request):
 # =========================
 
 
-@login_required_custom
+@role_required("admin", "usuario")
 def medicamentos_view(request):
     err, meds = _get(request, API["meds_all"])
     if err == "unauthorized":
@@ -437,7 +504,7 @@ def medicamentos_view(request):
 # =========================
 # Inventory (lista + paginación)
 # =========================
-@login_required_custom
+@role_required("admin")
 def inventory_view(request):
     # 1) Obtener lista de medicamentos
     err, meds = _get(request, API["meds_all"])
@@ -516,7 +583,7 @@ def inventory_view(request):
         page_obj = paginator.page(paginator.num_pages)
 
     # Catálogos para el modal
-    _, proveedores = _get(request, API["prov_all"])
+    _, proveedores = _get(request, API["prov_list"])
     _, categorias  = _get(request, API["cats_all"])
 
     context = {
@@ -535,7 +602,7 @@ def inventory_view(request):
 
 
 # Crear medicamento (desde el modal del inventario)
-@login_required_custom
+@role_required("admin")
 def create_medicamento_view(request):
     # Esta vista solo debe usarse para POST del modal
     if request.method != "POST":
@@ -587,7 +654,7 @@ def create_medicamento_view(request):
 
 
 # Editar medicamento
-@login_required_custom
+@role_required("admin")
 def edit_medicamento_view(request, med_id):
     # 1) Traer detalle del medicamento desde Nest
     detail_url = f"{API['meds_get']}/{med_id}"  # /api/medicamentos/:id
@@ -599,7 +666,7 @@ def edit_medicamento_view(request, med_id):
         return redirect("inventory")
 
     # 2) Catálogos para selects (proveedores y categorías)
-    _, proveedores = _get(request, API["prov_all"])
+    _, proveedores = _get(request, API["prov_list"])
     _, categorias  = _get(request, API["cats_all"])
     proveedores = proveedores if isinstance(proveedores, list) else []
     categorias  = categorias if isinstance(categorias, list) else []
@@ -825,7 +892,7 @@ def edit_medicamento_view(request, med_id):
     return render(request, "core/edit_medicamento.html", context)
 
 # Eliminar medicamento
-@login_required_custom
+@role_required("admin")
 def eliminar_medicamento_view(request, medicamento_id):
     if request.method == "POST":
         err, r = _delete(request, f"{API['meds_delete']}/{medicamento_id}")
@@ -837,7 +904,7 @@ def eliminar_medicamento_view(request, medicamento_id):
     return redirect("inventory")
 
 # Detalle medicamento
-@login_required_custom
+@role_required("admin")
 def detalle_medicamento_view(request, medicamento_id):
     err, data = _get(request, f"{API['meds_get']}/{medicamento_id}")
     if err == "unauthorized":
@@ -849,97 +916,282 @@ def detalle_medicamento_view(request, medicamento_id):
 # =========================
 # Reportes
 # =========================
-@login_required_custom
+@role_required("admin")
 def report_view(request):
     err, reports = _get(request, API["meds_all"])
     if err == "unauthorized":
         return redirect("login")
     return render(request, "core/reports.html", {"reports": reports if isinstance(reports, list) else []})
 
-# =========================
-# Pedidos
-# =========================
-@login_required_custom
-def order_view(request):
-    err, orders = _get(request, API["meds_all"])
-    if err == "unauthorized":
-        return redirect("login")
-    return render(request, "core/orders.html", {"orders": orders if isinstance(orders, list) else []})
+# # =========================
+# # Pedidos
+# # =========================
+# @login_required_custom
+# def order_view(request):
+#     err, orders = _get(request, API["meds_all"])
+#     if err == "unauthorized":
+#         return redirect("login")
+#     return render(request, "core/orders.html", {"orders": orders if isinstance(orders, list) else []})
 
 # =========================
 # Configuración
 # =========================
-@login_required_custom
+@role_required("admin", "usuario")
 def settings_view(request):
     err, settings = _get(request, API["meds_all"])
     if err == "unauthorized":
         return redirect("login")
     return render(request, "core/settings.html", {"settings": settings if isinstance(settings, list) else []})
 
+
 # =========================
 # Proveedores
 # =========================
-@login_required_custom
+@role_required("admin")
 def supplier_view(request):
-    err, data = _get(request, API["prov_all"])
-    if err == "unauthorized":
-        return redirect("login")
-    proveedores_list = data if isinstance(data, list) else []
+    """
+    Renderiza la página de proveedores. La tabla se llena dinámicamente
+    vía JavaScript contra los endpoints de la API de proveedores.
+    """
+    return render(request, "core/suppliers.html")
 
-    page = request.GET.get("page", 1)
-    paginator = Paginator(proveedores_list, 10)
-    try:
-        proveedores = paginator.page(page)
-    except PageNotAnInteger:
-        proveedores = paginator.page(1)
-    except EmptyPage:
-        proveedores = paginator.page(paginator.num_pages)
+# =========================
+# Proveedores (API JSON)
+# =========================
+@role_required("admin")
+def proveedores_list_create_json(request):
+    """
+    GET  -> lista de proveedores desde Nest
+    POST -> crea proveedor en Nest
+    """
+    if request.method == 'GET':
+        q = request.GET.get('q', None)
+        status = request.GET.get('status', None)
 
-    context = {"proveedores": proveedores, "page": proveedores.number, "total_pages": paginator.num_pages}
-    return render(request, "core/supplier.html", context)
+        if status is not None:
+            if status.lower() == 'true':
+                status = True
+            elif status.lower() == 'false':
+                status = False
 
-@login_required_custom
-def add_supplier_view(request):
-    error = None
-    if request.method == "POST":
-        payload = {
-            "nombre": request.POST.get("nombre"),
-            "contacto": request.POST.get("contacto"),
-            "direccion": request.POST.get("direccion"),
+        params = {'q': q, 'activo': status}
+        err, data = _get(request, API["prov_list"], params=params)
+        if err == "unauthorized":
+            return JsonResponse({"error": "unauthorized"}, status=401)
+
+        return JsonResponse(data if isinstance(data, list) else [], safe=False)
+
+    # ---------- CREATE ----------
+    if request.method == 'POST':
+        try:
+            payload = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        # Nunca mandes id en el body
+        payload.pop('id', None)
+
+        # Campos del form
+        nombre    = (payload.get('nombre') or '').strip()
+        telefono  = (payload.get('telefono') or '').strip()
+        email     = (payload.get('email') or '').strip()
+        direccion = (payload.get('direccion') or '').strip()
+
+        # Teléfono + email -> 'contacto' como string (lo que espera Nest)
+        partes = []
+        if telefono:
+            partes.append(f"Teléfono: {telefono}")
+        if email:
+            partes.append(f"Email: {email}")
+        contacto_str = ", ".join(partes) if partes else ""
+
+        new_payload = {
+            "nombre": nombre,
+            "contacto": contacto_str,
+            "direccion": direccion,
         }
+
+        err, r = _post(request, API["prov_create"], new_payload)
+        if err == "unauthorized":
+            return JsonResponse({"error": "unauthorized"}, status=401)
+
+        if not r or not r.ok:
+            # Si Nest responde 4xx/5xx o hay error de red
+            detail = None
+            if r is not None:
+                try:
+                    detail = r.json()
+                except Exception:
+                    detail = r.text
+            return JsonResponse(
+                {"error": "Failed to create supplier", "detail": detail or "No response"},
+                status=r.status_code if r else 502
+            )
+
+        # OK
+        try:
+            data = r.json()
+        except ValueError:
+            data = {}
+        return JsonResponse(data, status=r.status_code)
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    """
+    GET  -> lista de proveedores desde Nest
+    POST -> crea proveedor en Nest
+    """
+    if request.method == 'GET':
+        q = request.GET.get('q') or None
+        status = request.GET.get('status') or None
+
+        if status is not None:
+            if status.lower() == 'true':
+                status = True
+            elif status.lower() == 'false':
+                status = False
+
+        params = {'q': q, 'activo': status}
+        err, data = _get(request, API["prov_list"], params=params)
+
+        if err == "unauthorized":
+            return JsonResponse({"error": "unauthorized"}, status=401)
+
+        return JsonResponse(data if isinstance(data, list) else [], safe=False)
+
+    if request.method == 'POST':
+        try:
+            payload = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        # Teléfono + email -> campo 'contacto' para Nest
+        telefono = payload.pop('telefono', None)
+        email    = payload.pop('email', None)
+
+        contact_parts = []
+        if telefono:
+            contact_parts.append(f"Teléfono: {telefono}")
+        if email:
+            contact_parts.append(f"Email: {email}")
+
+        if contact_parts:
+            payload['contacto'] = ", ".join(contact_parts)
+
         err, r = _post(request, API["prov_create"], payload)
         if err == "unauthorized":
-            return redirect("login")
-        if r and r.status_code in (200, 201):
-            return redirect("suppliers")
-        error = f"No se pudo agregar el proveedor: {r.status_code if r else 'sin respuesta'}"
+            return JsonResponse({"error": "unauthorized"}, status=401)
 
-    # recargar lista
-    err, data = _get(request, API["prov_all"])
-    proveedores = data if isinstance(data, list) else []
-    return render(request, "core/supplier.html", {"proveedores": proveedores, "error": error})
+        if r and r.ok:
+            return JsonResponse(r.json(), status=r.status_code)
 
-@login_required_custom
-def edit_supplier_view(request, id):
-    if request.method == "POST":
-        payload = {
-            "nombre": request.POST.get("nombre"),
-            "contacto": request.POST.get("contacto"),
-            "direccion": request.POST.get("direccion"),
-        }
-        err, r = _put(request, f"{API['prov_update']}/{id}", payload)
-        if err == "unauthorized":
-            return redirect("login")
-        if r and r.status_code == 200:
-            return redirect("suppliers")
-    return redirect("suppliers")
+        return JsonResponse(
+            {"error": "Failed to create supplier", "detail": r.text if r else "No response"},
+            status=r.status_code if r else 502
+        )
 
-@login_required_custom
-def delete_supplier_view(request, id):
-    err, _ = _delete(request, f"{API['prov_delete']}/{id}")
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+@role_required("admin")
+def proveedor_detail_json(request, id: int):
+    """
+    GET -> detalle de un proveedor por id (proxy a Nest)
+    """
+    if request.method != 'GET':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    url_nest = f"{API['prov_detail']}/{id}"  # {API_URL}/api/proveedores/1
+
+    err, data = _get(request, url_nest)
     if err == "unauthorized":
-        return redirect("login")
-    return redirect("suppliers")
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    # _get devuelve directamente los datos (dict) o una lista vacía en caso de error.
+    # Si data es un diccionario no vacío, la llamada fue exitosa.
+    if isinstance(data, dict) and data:
+        return JsonResponse(data, status=200)
+    
+    # Si no, hubo un error o no se encontró el proveedor.
+    return JsonResponse({"error": "Failed to fetch supplier", "detail": "Not found or API error"}, status=404)
+
+
+# core/views.py
+@role_required("admin")
+@require_http_methods(["PUT", "PATCH"])
+def proveedor_update_json(request, id):
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "JSON inválido"}, status=400)
+
+    # No mandamos el id en el body
+    payload.pop("id", None)
+
+    # Tomamos los campos del formulario
+    telefono = payload.pop("telefono", "").strip()
+    email = payload.pop("email", "").strip()
+    direccion = payload.get("direccion", "").strip()
+    nombre = payload.get("nombre", "").strip()
+    activo = payload.get("activo", True)
+
+    # Construimos el string contacto EXACTAMENTE como en Postman
+    partes = []
+    if telefono:
+        partes.append(f"Teléfono: {telefono}")
+    if email:
+        partes.append(f"Email: {email}")
+    contacto_str = ", ".join(partes) if partes else ""
+
+    payload = {
+        "nombre": nombre,
+        "contacto": contacto_str,
+        "direccion": direccion,
+        "activo": activo,
+    }
+
+    url_nest = f"{API['prov_update']}{id}"  # ej: https://api.pharmacontrol.site/api/proveedores/update/
+    logger.info(f"Actualizando proveedor {id} vía {url_nest} payload={payload}")
+
+    err, r = _put(request, url_nest, payload)
+    if err or not r or not r.ok:
+        detail = None
+        if r is not None:
+            try:
+                detail = r.json()
+            except Exception:
+                detail = r.text
+        logger.error(f"Error al actualizar proveedor {id}: err={err}, detail={detail}")
+        return JsonResponse(
+            {"error": "Failed to update", "detail": detail or "No response"},
+            status=502,
+        )
+
+    return JsonResponse(r.json(), safe=False)
+
+
+@role_required("admin")
+def proveedor_delete_json(request, id: int):
+    """
+    DELETE -> elimina proveedor en Nest
+    """
+    if request.method != 'DELETE':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    url_nest = f"{API['prov_delete']}{id}"  # {API_URL}/api/proveedores/delete/1
+
+    err, r = _delete(request, url_nest)
+
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    if r and r.ok:
+        return JsonResponse({"success": True}, status=r.status_code)
+
+    return JsonResponse(
+        {"error": "Failed to delete supplier", "detail": r.text if r else "No response"},
+        status=r.status_code if r else 500
+    )
 
 #========================
 # Usuarios
@@ -949,7 +1201,7 @@ def delete_supplier_view(request, id):
 # Usuarios
 # ========================
 
-@login_required_custom
+@role_required("admin")
 def user_view(request):
     err, users = _get(request, API["users_all"])
     if err == "unauthorized":
@@ -959,7 +1211,7 @@ def user_view(request):
     })
 
 
-@login_required_custom
+@role_required("admin")
 def add_user_view(request):
     if request.method == "POST":
         nombre = (request.POST.get("nombre") or "").strip()
@@ -1011,7 +1263,7 @@ def add_user_view(request):
     return render(request, "core/add_user.html")
 
 
-@login_required_custom
+@role_required("admin")
 def edit_user_view(request, user_id):
     """
     Edita un usuario existente:
@@ -1066,7 +1318,7 @@ def edit_user_view(request, user_id):
     return render(request, "core/edit_user.html", {"user": u})
 
 
-@login_required_custom
+@role_required("admin")
 def delete_user_view(request, user_id):
     err, r = _delete(request, f"{API['users_delete']}/{user_id}")
     if err == "unauthorized":
@@ -1091,7 +1343,7 @@ def obtener_medicamentos_con_token(request):
         return []
     return data if isinstance(data, list) else []
 
-@login_required_custom
+@role_required("admin", "usuario")
 def carrito_view(request):
     token = request.session.get("jwt")
     if not token:
@@ -1218,7 +1470,7 @@ def navbar(request):
 # =========================
 # Pedidos (UI)
 # =========================
-@login_required_custom
+@role_required("admin")
 def orders_view(request):
     """
     Renderiza la página de Pedidos. La tabla se llena vía fetch
@@ -1230,6 +1482,7 @@ def orders_view(request):
 # =========================
 # Pedidos (JSON / proxy)
 # =========================
+@role_required("admin")
 def orders_list_json(request):
     """GET -> lista de pedidos (proxy a Nest)."""
     err, data = _get(request, API["orders_list"])
@@ -1257,6 +1510,7 @@ def orders_list_json(request):
 
 
 
+@role_required("admin")
 def order_detail_json(request, order_id: int):
     """GET -> detalle de pedido (proxy a Nest)."""
     err, data = _get(request, f"{API['orders_detail']}/{order_id}")
@@ -1265,6 +1519,7 @@ def order_detail_json(request, order_id: int):
     return JsonResponse(data or {}, safe=False)
 
 
+@role_required("admin")
 def order_create_json(request):
     """POST -> crear pedido (proxy a Nest)."""
     if request.method != "POST":
@@ -1290,6 +1545,7 @@ def order_create_json(request):
     )
 
 
+@role_required("admin")
 def order_patch_status_json(request, order_id: int):
     """
     PATCH -> cambiar estatus (proxy a Nest). Body: { "estatus": "RECIBIDO" }
@@ -1378,6 +1634,7 @@ def order_patch_status_json(request, order_id: int):
 
 # --- Catálogos usados por el modal ----
 
+@role_required("admin")
 def farmacias_json(request):
     """GET -> lista de farmacias (proxy a Nest)."""
     err, data = _get(request, API["farm_all"])
@@ -1386,9 +1643,10 @@ def farmacias_json(request):
     return JsonResponse(data if isinstance(data, list) else [], safe=False)
 
 
+@role_required("admin")
 def proveedores_all_json(request):
     """GET -> lista de proveedores (proxy a Nest)."""
-    err, data = _get(request, API["prov_all"])
+    err, data = _get(request, API["prov_list"])
     if err == "unauthorized":
         return JsonResponse({"error": "unauthorized"}, status=401)
     return JsonResponse(data if isinstance(data, list) else [], safe=False)
@@ -1427,6 +1685,7 @@ def proveedor_medicamentos_json(request, prov_id: int):
 #Buscador
 #=======================================
 def search_inventory(request):
+    if not request.session.get("jwt"): return JsonResponse({'results': []}, status=401)
     
     q = (request.GET.get('q') or '').strip()
     if len(q) < 2:
@@ -1647,6 +1906,7 @@ def search_meds(request):
 #Reportes PDF
 #=====================================
 
+@role_required("admin")
 # Lista por tipo (opcional si lo usas en la UI)
 def docs_by_tipo_json(request, tipo: str):
     err, data = _get(request, f"{DOCS_LIST}?tipo={tipo}")
@@ -1655,6 +1915,7 @@ def docs_by_tipo_json(request, tipo: str):
     return JsonResponse(data if isinstance(data, list) else [], safe=False)
 
 # Descarga/stream directo (si alguna vez Nest devuelve PDF real en /api/documentos/:id)
+@role_required("admin")
 def doc_by_id_stream(request, doc_id: str):
     try:
         r = requests.get(f"{DOCS_FILE}/{doc_id}", headers=_auth_headers(request), timeout=20, stream=True)
@@ -1670,6 +1931,7 @@ def doc_by_id_stream(request, doc_id: str):
         return JsonResponse({"error":"upstream_error","detail":str(e)}, status=502)
 
 # **NUEVO**: Ticket JSON (lo que mostraste)
+@role_required("admin", "usuario")
 def doc_descargar_json(request, doc_id: str):
     """Proxy de /api/documentos/descargar/:id — devuelve JSON del ticket."""
     err, data = _get(request, f"{DOCS_DESCARGAR}/{doc_id}")
@@ -1678,6 +1940,7 @@ def doc_descargar_json(request, doc_id: str):
     return JsonResponse(data or {}, safe=False)
 
 # Detalle de venta por ID (para fallbacks de jsPDF si lo necesitaras)
+@role_required("admin", "usuario")
 def venta_detalle_json(request, venta_id: str):
     err, data = _get(request, f"{VENTAS_GET}/{venta_id}")
     if err == "unauthorized":

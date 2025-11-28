@@ -3,72 +3,8 @@
 
 {% block title %}Editar Medicamento · Pharmacontrol{% endblock %}
 
-{% block head_extra %}
-  <style>
-    .detalle-wrapper {
-      max-width: 960px;
-      margin: 0 auto;
-    }
-    .detalle-card {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 24px 24px 20px;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-    }
-    .detalle-header-title {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #0f172a;
-      margin-bottom: 4px;
-    }
-    .detalle-header-subtitle {
-      color: #64748b;
-      font-size: 0.95rem;
-      margin-bottom: 0;
-    }
-    .detalle-section-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: #64748b;
-      margin-bottom: 10px;
-    }
-    .detalle-divider {
-      border-top: 1px solid rgba(148, 163, 184, 0.35);
-      margin: 20px 0;
-    }
-    .detalle-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 18px 40px;
-    }
-    .detalle-item-label {
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: #94a3b8;
-      margin-bottom: 4px;
-    }
-    .detalle-item-value input,
-    .detalle-item-value select {
-      font-size: 0.95rem;
-    }
-    @media (max-width: 768px) {
-      .detalle-card {
-        padding: 18px 16px 16px;
-      }
-      .detalle-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
-{% endblock %}
-
 {% block content %}
-  <div class="detalle-wrapper">
+  <div class="detalle-wrapper" style="max-width: 960px; margin: 0 auto;">
 
     <!-- Encabezado de página -->
     <div class="page-header" style="margin-bottom: 1.25rem;">
@@ -88,12 +24,12 @@
       </div>
     </div>
 
-    <div class="detalle-card">
+    <div class="form-container-card">
       <form method="post" action="">
         {% csrf_token %}
 
         <!-- Header -->
-        <div class="mb-3">
+        <div class="mb-4">
           <h1 class="detalle-header-title">{{ medicamento.nombre }}</h1>
           <p class="detalle-header-subtitle">
             ID #{{ medicamento.id }} · Lote actual: {{ medicamento.lote|default:"N/D" }}
@@ -101,9 +37,9 @@
         </div>
 
         <!-- Información principal -->
-        <div class="mb-3">
+        <div class="mb-4">
           <div class="detalle-section-title">Información principal</div>
-          <div class="detalle-grid">
+          <div class="row g-3">
 
             <div>
               <div class="detalle-item-label">Nombre del medicamento</div>
@@ -192,10 +128,10 @@
         <div class="detalle-divider"></div>
 
         <!-- Proveedor -->
-        <div class="mb-3">
+        <div class="mb-4">
           <div class="detalle-section-title">Proveedor</div>
-          <div class="detalle-grid">
-            <div>
+          <div class="row g-3">
+            <div class="col-md-6">
               <div class="detalle-item-label">Proveedor asignado</div>
               <div class="detalle-item-value">
                 <select name="proveedor_id" class="form-select" required>
@@ -209,7 +145,7 @@
                 </select>
               </div>
             </div>
-            <div>
+            <div class="col-md-6">
               <div class="detalle-item-label">Contacto (solo lectura de la API)</div>
               <div class="detalle-item-value text-muted">
                 {{ medicamento.proveedor.contacto|default:"Sin dato" }}
@@ -229,7 +165,7 @@
             <a href="{% url 'inventory' %}" class="btn btn-light">
               Cancelar
             </a>
-            <button type="submit" class="btn-brand">
+            <button type="submit" class="btn btn-brand">
               Guardar cambios
             </button>
           </div>
