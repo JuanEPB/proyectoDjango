@@ -3,7 +3,7 @@
 // Permite sobreescribir la URL base desde window.APP_CONFIG.API_URL
 const RAW_BASE_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL)
   ? String(window.APP_CONFIG.API_URL)
-  : 'http://localhost:3000';
+  : 'https://api.pharmacontrol.site';
 
 // Normaliza URL base (sin slash final)
 const BASE_URL = RAW_BASE_URL.replace(/\/+$/, '');
