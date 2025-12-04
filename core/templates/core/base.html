@@ -5,210 +5,321 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}Pharmacontrol{% endblock %}</title>
-<script>
-  (function () {
-    const THEME_KEY = 'pc_theme';
-    const root = document.documentElement;
-    let theme = 'dark';
+  <link rel="icon" type="image/png" href="{% static 'img/logo1.png' %}">
 
-    try {
-      const stored = localStorage.getItem(THEME_KEY);
-      if (stored === 'light' || stored === 'dark') {
-        theme = stored;
+  <script>
+    (function () {
+      const THEME_KEY = 'pc_theme';
+      const root = document.documentElement;
+      let theme = 'dark';
+
+      try {
+        const stored = localStorage.getItem(THEME_KEY);
+        if (stored === 'light' || stored === 'dark') {
+          theme = stored;
+        }
+      } catch (e) {
+        // si falla localStorage, dejamos 'dark'
       }
-    } catch (e) {
-      // si falla localStorage, dejamos 'dark'
+
+      if (theme === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+      } else {
+        root.removeAttribute('data-theme'); // claro por defecto
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/pharmacontrol.css' %}">
+
+  <style>
+    /* --- Mejoras Tema Oscuro --- */
+    [data-theme="dark"] {
+      --bs-body-bg: #121212;
+      --bs-body-color: #e0e0e0;
+      --bs-border-color: #3a3a3a;
+      --pc-surface-1: #1e1e1e; /* Cards, Modals */
+      --pc-surface-2: #2a2a2a; /* Inputs, Table Headers */
+      --pc-surface-3: #333333; /* Hover, Active states */
+      --pc-text-muted: #9e9e9e;
+      --pc-brand-intense: #0d6efd; /* Un azul más vibrante */
     }
 
-    if (theme === 'dark') {
-      root.setAttribute('data-theme', 'dark');
-    } else {
-      root.removeAttribute('data-theme'); // claro por defecto
+    [data-theme="dark"] body {
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
     }
-  })();
-</script>
 
+    /* --- Tablas --- */
+    [data-theme="dark"] .table {
+      --bs-table-bg: var(--pc-surface-1);
+      --bs-table-color: var(--bs-body-color);
+      --bs-table-border-color: var(--bs-border-color);
+      --bs-table-striped-bg: #242424;
+      --bs-table-striped-color: var(--bs-body-color);
+      --bs-table-hover-bg: var(--pc-surface-3);
+      --bs-table-hover-color: var(--bs-body-color);
+    }
 
+    [data-theme="dark"] .table-light {
+      --bs-table-bg: var(--pc-surface-2);
+      --bs-table-color: #ffffff;
+    }
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/pharmacontrol.css' %}">
+    [data-theme="dark"] .table-bordered {
+      border-color: var(--bs-border-color);
+    }
 
-<style>
-  /* --- Mejoras Tema Oscuro --- */
-  [data-theme="dark"] {
-    --bs-body-bg: #121212;
-    --bs-body-color: #e0e0e0;
-    --bs-border-color: #3a3a3a;
-    --pc-surface-1: #1e1e1e; /* Cards, Modals */
-    --pc-surface-2: #2a2a2a; /* Inputs, Table Headers */
-    --pc-surface-3: #333333; /* Hover, Active states */
-    --pc-text-muted: #9e9e9e;
-    --pc-brand-intense: #0d6efd; /* Un azul más vibrante */
-  }
+    /* --- Cards y Modales --- */
+    [data-theme="dark"] .card,
+    [data-theme="dark"] .modal-content,
+    [data-theme="dark"] dialog {
+      background-color: var(--pc-surface-1);
+      border: 1px solid var(--bs-border-color);
+      color: var(--bs-body-color);
+    }
 
-  [data-theme="dark"] body {
-    background-color: var(--bs-body-bg);
-    color: var(--bs-body-color);
-  }
+    [data-theme="dark"] .modal-title,
+    [data-theme="dark"] .modal-body,
+    [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+    [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
+      color: #ffffff;
+    }
 
-  /* --- Tablas --- */
-  [data-theme="dark"] .table {
-    --bs-table-bg: var(--pc-surface-1);
-    --bs-table-color: var(--bs-body-color);
-    --bs-table-border-color: var(--bs-border-color);
-    --bs-table-striped-bg: #242424;
-    --bs-table-striped-color: var(--bs-body-color);
-    --bs-table-hover-bg: var(--pc-surface-3);
-    --bs-table-hover-color: var(--bs-body-color);
-  }
+    [data-theme="dark"] .modal-header,
+    [data-theme="dark"] .modal-footer {
+      border-color: var(--bs-border-color);
+    }
 
-  [data-theme="dark"] .table-light {
-    --bs-table-bg: var(--pc-surface-2);
-    --bs-table-color: #ffffff;
-  }
+    [data-theme="dark"] .btn-close {
+      filter: invert(1) grayscale(100%) brightness(200%);
+    }
 
-  [data-theme="dark"] .table-bordered {
-    border-color: var(--bs-border-color);
-  }
+    [data-theme="dark"] .list-group-item.active {
+      background-color: var(--pc-brand-intense);
+      border-color: var(--pc-brand-intense);
+    }
 
-  /* --- Cards y Modales --- */
-  [data-theme="dark"] .card,
-  [data-theme="dark"] .modal-content,
-  [data-theme="dark"] dialog {
-    background-color: var(--pc-surface-1);
-    border: 1px solid var(--bs-border-color);
-    color: var(--bs-body-color);
-  }
+    [data-theme="dark"] .list-group-item {
+      background-color: var(--pc-surface-1);
+      border-color: var(--bs-border-color);
+      color: var(--bs-body-color);
+    }
 
-  [data-theme="dark"] .modal-title,
-  [data-theme="dark"] .modal-body,
-  [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
-    color: #ffffff; /* Blanco más puro para títulos y texto principal de modales */
-  }
+    [data-theme="dark"] .list-group-item-action:hover,
+    [data-theme="dark"] .list-group-item-action:focus {
+      background-color: var(--pc-surface-2);
+    }
 
-  [data-theme="dark"] .modal-header,
-  [data-theme="dark"] .modal-footer {
-    border-color: var(--bs-border-color);
-  }
+    /* --- Formularios --- */
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+      background-color: var(--pc-surface-2);
+      color: var(--bs-body-color);
+      border-color: var(--bs-border-color);
+    }
 
-  [data-theme="dark"] .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%);
-  }
+    [data-theme="dark"] .form-label,
+    [data-theme="dark"] .form-check-label {
+      color: #b0b0b0;
+      font-weight: 500;
+    }
 
-  [data-theme="dark"] .list-group-item.active {
-    background-color: var(--pc-brand-intense);
-    border-color: var(--pc-brand-intense);
-  }
+    [data-theme="dark"] .form-control:focus,
+    [data-theme="dark"] .form-select:focus {
+      background-color: var(--pc-surface-2);
+      color: var(--bs-body-color);
+      border-color: var(--pc-brand-intense);
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
 
-  [data-theme="dark"] .list-group-item {
-    background-color: var(--pc-surface-1);
-    border-color: var(--bs-border-color);
-    color: var(--bs-body-color);
-  }
+    [data-theme="dark"] .form-control::placeholder {
+      color: var(--pc-text-muted);
+    }
 
-  [data-theme="dark"] .list-group-item-action:hover,
-  [data-theme="dark"] .list-group-item-action:focus {
-    background-color: var(--pc-surface-2);
-  }
+    [data-theme="dark"] .input-group-text {
+      background-color: var(--pc-surface-3);
+      border-color: var(--bs-border-color);
+      color: var(--pc-text-muted);
+    }
 
-  /* --- Formularios --- */
-  [data-theme="dark"] .form-control,
-  [data-theme="dark"] .form-select {
-    background-color: var(--pc-surface-2);
-    color: var(--bs-body-color);
-    border-color: var(--bs-border-color);
-  }
+    /* --- Estilos para Páginas de Creación/Edición --- */
+    [data-theme="dark"] .page-header .title {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
 
-  [data-theme="dark"] .form-label,
-  [data-theme="dark"] .form-check-label {
-    color: #b0b0b0; /* Un gris más claro para etiquetas */
-    font-weight: 500;
-  }
+    [data-theme="dark"] .page-header .subtitle {
+      color: var(--pc-text-muted);
+    }
 
-  [data-theme="dark"] .form-control:focus,
-  [data-theme="dark"] .form-select:focus {
-    background-color: var(--pc-surface-2);
-    color: var(--bs-body-color);
-    border-color: var(--pc-brand-intense);
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-  }
+    [data-theme="dark"] .form-container-card {
+      background-color: var(--pc-surface-1);
+      padding: 2rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--bs-border-color);
+    }
 
-  [data-theme="dark"] .form-control::placeholder {
-    color: var(--pc-text-muted);
-  }
+    [data-theme="dark"] .btn-brand {
+      background-color: var(--pc-brand-intense);
+      color: white;
+      font-weight: 600;
+      padding: 0.5rem 1.25rem;
+      border: none;
+    }
 
-  [data-theme="dark"] .input-group-text {
-    background-color: var(--pc-surface-3);
-    border-color: var(--bs-border-color);
-    color: var(--pc-text-muted);
-  }
+    /* --- Estilos para Páginas de Visualización (Detalle) --- */
+    [data-theme="dark"] .detalle-header-title {
+      color: #ffffff;
+      font-weight: 700;
+    }
+    [data-theme="dark"] .detalle-header-subtitle,
+    [data-theme="dark"] .detalle-item-value.text-muted {
+      color: var(--pc-text-muted);
+    }
+    [data-theme="dark"] .detalle-section-title,
+    [data-theme="dark"] .detalle-item-label {
+      color: #b0b0b0;
+    }
 
-  /* --- Estilos para Páginas de Creación/Edición --- */
-  [data-theme="dark"] .page-header .title {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: #ffffff;
-  }
+    /* --- Colores Intensos y Componentes --- */
+    [data-theme="dark"] .text-muted-2 {
+      color: var(--pc-text-muted) !important;
+    }
 
-  [data-theme="dark"] .page-header .subtitle {
-    color: var(--pc-text-muted);
-  }
+    [data-theme="dark"] .kpi {
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    }
 
-  [data-theme="dark"] .form-container-card {
-    background-color: var(--pc-surface-1);
-    padding: 2rem;
-    border-radius: 0.75rem;
-    border: 1px solid var(--bs-border-color);
-  }
+    [data-theme="dark"] .kpi.badge-up { background-color: rgba(25, 135, 84, 0.3); color: #e0e0e0; }
+    [data-theme="dark"] .kpi.badge-warn { background-color: rgba(255, 193, 7, 0.3); color: #e0e0e0; }
+    [data-theme="dark"] .kpi.badge-down { background-color: rgba(220, 53, 69, 0.3); color: #e0e0e0; }
 
-  [data-theme="dark"] .btn-brand {
-    background-color: var(--pc-brand-intense);
-    color: white;
-    font-weight: 600;
-    padding: 0.5rem 1.25rem;
-    border: none;
-  }
+    [data-theme="dark"] .kpi .kpi-value {
+      color: #ffffff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
 
-  /* --- Estilos para Páginas de Visualización (Detalle) --- */
-  [data-theme="dark"] .detalle-header-title {
-    color: #ffffff;
-    font-weight: 700;
-  }
-  [data-theme="dark"] .detalle-header-subtitle,
-  [data-theme="dark"] .detalle-item-value.text-muted {
-    color: var(--pc-text-muted);
-  }
-  [data-theme="dark"] .detalle-section-title,
-  [data-theme="dark"] .detalle-item-label {
-    color: #b0b0b0;
-  }
+    [data-theme="dark"] .chip.ok { background-color: #198754; color: white; }
+    [data-theme="dark"] .chip.warn { background-color: #ffc107; color: #121212; }
+    [data-theme="dark"] .chip.danger { background-color: #dc3545; color: white; }
 
-  /* --- Colores Intensos y Componentes --- */
-  [data-theme="dark"] .text-muted-2 {
-    color: var(--pc-text-muted) !important;
-  }
+    /* ======================
+       TOGGLE DE SIDEBAR
+       ====================== */
 
-  [data-theme="dark"] .kpi {
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-  }
+    .submenu {
+      transition: width 0.25s ease;
+    }
 
-  [data-theme="dark"] .kpi.badge-up { background-color: rgba(25, 135, 84, 0.3); color: #e0e0e0; }
-  [data-theme="dark"] .kpi.badge-warn { background-color: rgba(255, 193, 7, 0.3); color: #e0e0e0; }
-  [data-theme="dark"] .kpi.badge-down { background-color: rgba(220, 53, 69, 0.3); color: #e0e0e0; }
-  
-  [data-theme="dark"] .kpi .kpi-value { 
-    color: #ffffff; 
-    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
-  }
+    .contenido {
+      transition: margin-left 0.25s ease;
+    }
 
-  [data-theme="dark"] .chip.ok { background-color: #198754; color: white; }
-  [data-theme="dark"] .chip.warn { background-color: #ffc107; color: #121212; }
-  [data-theme="dark"] .chip.danger { background-color: #dc3545; color: white; }
-</style>
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+    }
+
+    .logo-text {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .sidebar-toggle-btn {
+      border: none;
+      background: rgba(250, 252, 255, 0.06);
+      border-radius: 999px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      font-size: 1.1rem;
+    }
+
+    .sidebar-toggle-btn:hover {
+      background: rgba(130, 166, 243, 0.12);
+    }
+
+    /* Estado colapsado */
+    body.sidebar-collapsed .submenu {
+      width: 72px;
+    }
+
+    body.sidebar-collapsed .logo-text {
+      display: none;
+    }
+
+    body.sidebar-collapsed .list-menu1 .text,
+    body.sidebar-collapsed .list-menu-parent .text {
+      display: none;
+    }
+
+    /* Ajusta el contenido cuando está colapsado
+       (si tu CSS original da margin-left más grande, esto lo sobrescribe) */
+    body.sidebar-collapsed .contenido {
+      margin-left: 80px !important;
+    }
+
+    /* ==========================================
+   USUARIO ACTIVO EN LA PARTE INFERIOR
+========================================== */
+
+.active-user {
+  margin-top: 20px;
+  padding: 14px 12px;
+  border-top: 1px solid var(--bs-border-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.25s ease;
+}
+
+.active-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.active-info {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.active-info .role {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* MODO COLAPSADO */
+body.sidebar-collapsed .active-info {
+  display: none;
+}
+
+body.sidebar-collapsed .active-user {
+  justify-content: center;
+}
+
+  </style>
 
   {% block head_extra %}{% endblock %}
 </head>
@@ -218,46 +329,102 @@
     <div class="side-bar">
       <div>
         <div class="logo">
-          Pharmacontrol
-          {% if request.session.user_role %}
-            <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill" style="font-size: 0.6rem; vertical-align: middle;">
-              {{ request.session.user_role|title }}
-            </span>
-          {% endif %}
+          
+          <span class="logo-text">
+            Pharmacontrol
+            {% if request.session.user_role %}
+              <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill"
+                    style="font-size: 0.6rem; vertical-align: middle;">
+                {{ request.session.user_role|title }}
+              </span>
+            {% endif %}
+          </span>
+          <button id="sidebar-toggle" class="sidebar-toggle-btn" type="button" aria-label="Alternar menú">
+            <i class="bi bi-list"></i>
+          </button>
         </div>
+
         <div class="list-menu1">
-          <div class="content {% if request.resolver_match.url_name == 'medicamentos' %}active{% endif %}"><i class="bi bi-house"></i><div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div></div>
+          <div class="content {% if request.resolver_match.url_name == 'medicamentos' %}active{% endif %}">
+            <i class="bi bi-house"></i>
+            <div class="text"><a href="{% url 'medicamentos' %}">Dashboard</a></div>
+          </div>
+
           {% if request.session.user_role == 'admin' %}
-            <div class="content {% if request.resolver_match.url_name == 'inventory' %}active{% endif %}"><i class="bi bi-box"></i><div class="text"><a href="{% url 'inventory' %}">Inventario</a></div></div>
-            <div class="content {% if request.resolver_match.url_name == 'reports' %}active{% endif %}"><i class="bi bi-files"></i><div class="text"><a href="{% url 'reports' %}">Reportes</a></div></div>
-            <div class="content {% if request.resolver_match.url_name == 'users' %}active{% endif %}"><i class="bi bi-people"></i><div class="text"><a href="{% url 'users' %}">Usuarios</a></div></div>
-            <div class="content {% if request.resolver_match.url_name == 'orders' %}active{% endif %}"><i class="bi bi-truck"></i><div class="text"><a href="{% url 'orders' %}">Pedidos</a></div></div>
-            <div class="content {% if request.resolver_match.url_name == 'suppliers' %}active{% endif %}"><i class="bi bi-cart-check"></i><div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div></div>
+          <div class="content {% if request.resolver_match.url_name == 'inventory' %}active{% endif %}">
+            <i class="bi bi-box"></i>
+            <div class="text"><a href="{% url 'inventory' %}">Inventario</a></div>
+          </div>
+          <div class="content {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+            <i class="bi bi-files"></i>
+            <div class="text"><a href="{% url 'reports' %}">Reportes</a></div>
+          </div>
+          <div class="content {% if request.resolver_match.url_name == 'users' %}active{% endif %}">
+            <i class="bi bi-people"></i>
+            <div class="text"><a href="{% url 'users' %}">Usuarios</a></div>
+          </div>
+          <div class="content {% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
+            <i class="bi bi-truck"></i>
+            <div class="text"><a href="{% url 'orders' %}">Pedidos</a></div>
+          </div>
+          <div class="content {% if request.resolver_match.url_name == 'suppliers' %}active{% endif %}">
+            <i class="bi bi-cart-check"></i>
+            <div class="text"><a href="{% url 'suppliers' %}">Proveedores</a></div>
+          </div>
           {% endif %}
-          <div class="content {% if request.resolver_match.url_name == 'carrito' %}active{% endif %}"><i class="bi bi-cart3"></i><div class="text"><a href="{% url 'carrito' %}">Carrito</a></div></div>
+
+          <div class="content {% if request.resolver_match.url_name == 'carrito' %}active{% endif %}">
+            <i class="bi bi-cart3"></i>
+            <div class="text"><a href="{% url 'carrito' %}">Carrito</a></div>
+          </div>
         </div>
       </div>
+
       <div class="list-menu-parent">
-        <div class="content {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-          <i class="bi bi-gear"></i><div class="text"><a href="{% url 'settings' %}">Configuración</a></div>
-        </div>
-       <div class="content">
-          <li class="nav-item mt-auto">
-            <button
-              type="button"
-              data-action="logout"
-              class="sidebar-link"
-              style="background:none;border:none;color:inherit;padding:0;width:100%;text-align:left;cursor:pointer;display:flex;align-items:center;"
-             >
-              <i class="bi bi-box-arrow-left"></i>
-              <span>Cerrar Sesión</span>
-            </button>
-          </li>
-        </div>
-        </div>
-      </div>
+
+  <!-- Botón Configuración -->
+  <div class="content {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+    <i class="bi bi-gear"></i>
+    <div class="text"><a href="{% url 'settings' %}">Configuración</a></div>
+  </div>
+
+  <!-- Botón Logout -->
+  <div class="content">
+    <button
+      type="button"
+      data-action="logout"
+      class="sidebar-link"
+      style="background:none;border:none;color:inherit;padding:0;width:100%;text-align:left;cursor:pointer;display:flex;align-items:center;gap:.4rem;"
+    >
+      <i class="bi bi-box-arrow-left"></i>
+      <span class="text">Cerrar Sesión</span>
+    </button>
+  </div>
+
+  <!-- USUARIO ACTIVO (nuevo) -->
+<div class="active-user">
+  <div class="active-avatar">
+    {{ request.session.user_nombre|default:"-"|first|upper }}{{ request.session.user_apellido|default:"-"|first|upper }}
+  </div>
+
+  <div class="active-info text">
+    <strong>
+      {{ request.session.user_nombre|default:"Usuario" }}
+      {{ request.session.user_apellido|default:"Activo" }}
+    </strong><br>
+    <span class="role">
+      {{ request.session.user_role|default:"Usuario"|title }}
+    </span>
+  </div>
+</div>
+
+
+
+
+</div>
+
     </div>
-  
+  </div>
 
   <!-- Contenido -->
   <div class="contenido">
@@ -275,73 +442,80 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
-  
-  <!-- Incluir el script de autenticación y el listener para el botón de logout -->
-{% csrf_token %}
-<script>
-  // Solo ponemos la constante en window, sin volver a declarar "const" global.
-  window.TOKEN_KEY = 'pc_access_token_v1';
-</script>
-<script src="{% static 'js/dashboard.js' %}"></script>
-<script>
-  (function () {
-    const THEME_KEY = 'pc_theme';
-    const root = document.documentElement;
 
-    function applyTheme(theme) {
-      // Normalizamos
-      if (theme !== 'dark') {
-        theme = 'light';
-        root.removeAttribute('data-theme');   // tema claro: sin atributo
-      } else {
-        root.setAttribute('data-theme', 'dark');
-      }
+  {% csrf_token %}
+  <script>
+    // Solo ponemos la constante en window, sin volver a declarar "const" global.
+    window.TOKEN_KEY = 'pc_access_token_v1';
+  </script>
+  <script src="{% static 'js/dashboard.js' %}"></script>
 
-      // Guardar preferencia
-      try {
-        localStorage.setItem(THEME_KEY, theme);
-      } catch (e) {}
+  <script>
+    // Toggle de tema (ya lo tenías)
+    (function () {
+      const THEME_KEY = 'pc_theme';
+      const root = document.documentElement;
 
-      // Marcar botones activos si existen (solo en Configuración)
-      const btnLight = document.getElementById('theme-light');
-      const btnDark  = document.getElementById('theme-dark');
-      if (btnLight) btnLight.classList.toggle('active', theme === 'light');
-      if (btnDark)  btnDark.classList.toggle('active', theme === 'dark');
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      // Leer tema guardado
-      let theme = 'dark';
-      try {
-        const stored = localStorage.getItem(THEME_KEY);
-        if (stored === 'light' || stored === 'dark') {
-          theme = stored;
+      function applyTheme(theme) {
+        if (theme !== 'dark') {
+          theme = 'light';
+          root.removeAttribute('data-theme');
+        } else {
+          root.setAttribute('data-theme', 'dark');
         }
-      } catch (e) {}
-      applyTheme(theme);
 
-      // Botones en Configuración
-      const btnLight = document.getElementById('theme-light');
-      const btnDark  = document.getElementById('theme-dark');
+        try {
+          localStorage.setItem(THEME_KEY, theme);
+        } catch (e) {}
 
-      if (btnLight) {
-        btnLight.addEventListener('click', function (e) {
-          e.preventDefault();
-          applyTheme('light');
-        });
+        const btnLight = document.getElementById('theme-light');
+        const btnDark  = document.getElementById('theme-dark');
+        if (btnLight) btnLight.classList.toggle('active', theme === 'light');
+        if (btnDark)  btnDark.classList.toggle('active', theme === 'dark');
       }
 
-      if (btnDark) {
-        btnDark.addEventListener('click', function (e) {
-          e.preventDefault();
-          applyTheme('dark');
-        });
-      }
+      document.addEventListener('DOMContentLoaded', function () {
+        let theme = 'dark';
+        try {
+          const stored = localStorage.getItem(THEME_KEY);
+          if (stored === 'light' || stored === 'dark') {
+            theme = stored;
+          }
+        } catch (e) {}
+        applyTheme(theme);
+
+        const btnLight = document.getElementById('theme-light');
+        const btnDark  = document.getElementById('theme-dark');
+
+        if (btnLight) {
+          btnLight.addEventListener('click', function (e) {
+            e.preventDefault();
+            applyTheme('light');
+          });
+        }
+
+        if (btnDark) {
+          btnDark.addEventListener('click', function (e) {
+            e.preventDefault();
+            applyTheme('dark');
+          });
+        }
+      });
+    })();
+
+    // =========================
+    // Toggle de sidebar
+    // =========================
+    document.addEventListener('DOMContentLoaded', function () {
+      const toggleBtn = document.getElementById('sidebar-toggle');
+      if (!toggleBtn) return;
+
+      toggleBtn.addEventListener('click', function () {
+        document.body.classList.toggle('sidebar-collapsed');
+      });
     });
-  })();
-</script>
+  </script>
 
-
-{% block scripts %}{% endblock %}
+  {% block scripts %}{% endblock %}
 </body>
 </html>

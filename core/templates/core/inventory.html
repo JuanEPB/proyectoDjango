@@ -109,44 +109,41 @@
 
     <!-- Paginación superior -->
     {% if page_obj %}
-    <nav aria-label="Page navigation" class="mt-3">
-      <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-          <li class="page-item">
-            <a class="page-link"
-               href="?page={{ page_obj.previous_page_number }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
-              &laquo;
-            </a>
-          </li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-        {% endif %}
+<nav aria-label="Paginación inventario" class="d-flex justify-content-center mt-3">
+  <ul class="pagination pagination-sm">
 
-        {% for num in page_obj.paginator.page_range %}
-          {% if page_obj.number == num %}
-            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-          {% else %}
-            <li class="page-item">
-              <a class="page-link"
-                 href="?page={{ num }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
-                {{ num }}
-              </a>
-            </li>
-          {% endif %}
-        {% endfor %}
+    {# Botón « anterior #}
+    {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">&laquo;</span>
+      </li>
+    {% endif %}
 
-        {% if page_obj.has_next %}
-          <li class="page-item">
-            <a class="page-link"
-               href="?page={{ page_obj.next_page_number }}{% if request.GET.filtro %}&filtro={{ request.GET.filtro }}{% endif %}">
-              &raquo;
-            </a>
-          </li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-        {% endif %}
-      </ul>
-    </nav>
+    {# Números de página #}
+    {% for num in page_obj.paginator.page_range %}
+      <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+      </li>
+    {% endfor %}
+
+    {# Botón » siguiente #}
+    {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">&raquo;</span>
+      </li>
+    {% endif %}
+
+  </ul>
+</nav>
+
     {% endif %}
 
     {% if inventory %}

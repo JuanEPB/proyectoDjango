@@ -176,3 +176,17 @@ if not EMAIL_HOST_USER and DEBUG:
     # helpful for local dev: print emails to console
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+# settings.py
+
+# Cache simple en memoria (sin Redis)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "pharmacontrol-cache",
+    }
+}
+
+# Sesiones normales en base de datos (seguras y estables)
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+# Quita / comenta esta línea si la tenías:
+# SESSION_CACHE_ALIAS = "default"

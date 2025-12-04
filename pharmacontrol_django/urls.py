@@ -103,12 +103,15 @@ urlpatterns = [
     path('inventario/meds/search/', core.search_meds),  # compat
 
     # urls.py
+    path('api/documentos/listar', core.docs_list_json, name='docs_list_json'),
     path('api/documentos/tipo/<str:tipo>', core.docs_by_tipo_json, name='docs_by_tipo_json'),
     path('api/documentos/<str:doc_id>',     core.doc_by_id_stream, name='doc_by_id_stream'),           # por si es PDF
     path('api/documentos/descargar/<str:doc_id>', core.doc_descargar_json, name='doc_descargar_json'),  # JSON de ticket
     path('api/ventas/<str:venta_id>',       core.venta_detalle_json, name='venta_detalle_json'),
 
-
+    # Reportes
+    path("reportes/", core.report_view, name="reports"),
+    path("documentos/<str:doc_id>/pdf/", core.doc_descargar_pdf, name="doc_descargar_pdf"),
 
     # Otros
     path('asda/', core.navbar, name='navbar'),

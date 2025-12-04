@@ -63,6 +63,7 @@ body{
 }
 
 
+
 /* ===============================
    App Bar (nuevo)
    =============================== */
@@ -755,4 +756,359 @@ html[data-theme="dark"] .input-group-text {
 }
 html[data-theme="dark"] .main-content {
   background: transparent;
+}
+
+/* ================================
+   SETTINGS DASHBOARD – LAYOUT BASE
+   ================================ */
+
+.settings-dashboard {
+  padding-bottom: 24px;
+}
+
+/* GRID principal: izquierda (perfil/ayuda) + derecha (detalles) */
+.settings-dashboard .settings-columns {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 22px;
+  align-items: flex-start;
+}
+
+/* Columna izquierda */
+.settings-dashboard .settings-left {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Columna derecha */
+.settings-dashboard .settings-right {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Cards genéricas */
+.settings-dashboard .settings-card {
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: 0 10px 35px rgba(15,23,42,.06);
+}
+
+/* ===================== PERFIL ===================== */
+
+.settings-dashboard .profile-card-body {
+  padding: 22px 20px 18px;
+  text-align: center;
+}
+
+.settings-dashboard .avatar-xl {
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  margin: 0 auto 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 30px;
+  background: radial-gradient(circle at 0 0,#38bdf8,#2563eb);
+  color: #fff;
+}
+
+.settings-dashboard .profile-name {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-dashboard .profile-email {
+  margin: 2px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.settings-dashboard .profile-role {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--subtle);
+}
+
+.settings-dashboard .profile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* ===================== AYUDA ===================== */
+
+.settings-dashboard .help-card-body {
+  padding: 18px 20px;
+  text-align: center;
+}
+
+.settings-dashboard .help-icon-bubble {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  margin: 0 auto 8px;
+  display: grid;
+  place-items: center;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.settings-dashboard .help-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 4px 0 2px;
+}
+
+.settings-dashboard .help-text {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.settings-dashboard .help-footnote {
+  font-size: 11px;
+  color: var(--subtle);
+  margin-top: 6px;
+}
+
+/* ===================== ESTADO / PROGRESO ===================== */
+
+.settings-dashboard .status-card {
+  padding: 20px 22px;
+}
+
+.settings-dashboard .status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.settings-dashboard .status-meta {
+  font-size: 12px;
+}
+
+.settings-dashboard .status-label {
+  color: var(--subtle);
+}
+
+.settings-dashboard .status-value {
+  font-weight: 600;
+}
+
+/* timeline horizontal */
+.settings-dashboard .status-steps-wrapper {
+  position: relative;
+  margin-top: 18px;
+  padding-top: 14px;
+}
+
+.settings-dashboard .status-steps-line {
+  position: absolute;
+  inset-inline: 12px;
+  top: 26px;
+  height: 3px;
+  background: #e5e7eb;
+  border-radius: 999px;
+}
+
+.settings-dashboard .status-step {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 60px;
+}
+
+.settings-dashboard .status-step:last-child {
+  margin-right: 0;
+}
+
+.settings-dashboard .status-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 3px solid #d1d5db;
+  background: #fff;
+  z-index: 1;
+}
+
+.settings-dashboard .status-step-label {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.settings-dashboard .status-complete .status-dot {
+  border-color: #22c55e;
+  background: #bbf7d0;
+}
+
+.settings-dashboard .status-complete .status-step-label {
+  color: #16a34a;
+}
+
+.settings-dashboard .status-current .status-dot {
+  border-color: #2563eb;
+  background: #bfdbfe;
+}
+
+.settings-dashboard .status-current .status-step-label {
+  color: #1d4ed8;
+}
+
+/* ===================== TABS DETALLE ===================== */
+
+.settings-dashboard .details-card {
+  padding: 0;
+}
+
+.settings-dashboard .details-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 10px 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-dashboard .details-tab-button {
+  border: none;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: 999px 999px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.settings-dashboard .details-tab-button.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 -1px 0 #ffffff, 0 -2px 0 #2563eb;
+}
+
+.settings-dashboard .details-tab-panels {
+  padding: 10px 20px 18px;
+}
+
+.settings-dashboard .details-tab-panel {
+  display: none;
+}
+
+.settings-dashboard .details-tab-panel.active {
+  display: block;
+}
+
+.settings-dashboard .details-card .settings-form-grid {
+  margin-top: 10px;
+}
+
+/* ===================== SEGURIDAD ===================== */
+
+.settings-dashboard .security-card {
+  padding: 20px 22px 18px;
+}
+
+.settings-dashboard .settings-security {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr);
+  gap: 18px;
+}
+
+.settings-dashboard .settings-security-tips ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ===================== FORMULARIOS ===================== */
+
+.settings-dashboard .settings-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-dashboard .settings-form-row {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 4px;
+  align-items: center;
+}
+
+.settings-dashboard .settings-form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.settings-dashboard .settings-form-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.settings-dashboard .settings-form-field .form-control {
+  border-radius: 10px;
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+.settings-dashboard .settings-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+/* ===================== DARK MODE ===================== */
+
+html[data-theme="dark"] .settings-dashboard .settings-card {
+  background: var(--panel);
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .settings-dashboard .status-steps-line {
+  background: #1e293b;
+}
+
+html[data-theme="dark"] .settings-dashboard .status-dot {
+  background: var(--panel);
+}
+
+/* ===================== RESPONSIVE ===================== */
+
+@media (max-width: 1100px) {
+  .settings-dashboard .settings-columns {
+    grid-template-columns: 1fr;
+  }
+  .settings-dashboard .settings-left {
+    order: 2;
+  }
+  .settings-dashboard .settings-right {
+    order: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-dashboard .settings-security {
+    grid-template-columns: 1fr;
+  }
+  .settings-dashboard .settings-form-row {
+    grid-template-columns: 1fr;
+  }
+  .settings-dashboard .status-step {
+    margin-right: 30px;
+  }
 }

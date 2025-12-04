@@ -1,32 +1,91 @@
 {% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Configuración · Pharmacontrol{% endblock %}
+{% block title %}Configuración{% endblock %}
 
 {% block content %}
-
 <div class="appbar">
   <div class="crumbs">Sistema / <b>Configuración</b></div>
   <div class="spacer"></div>
 </div>
 
-<div class="contenido">
-  <div class="page-header">
+<div class="settings-dashboard">
+
+  <!-- Encabezado -->
+  <div class="settings-header mb-3">
     <div>
-      <div class="title">Preferencias del sistema</div>
-      <div class="subtitle">Ajustes visuales, generales y de seguridad.</div>
+      <h1 class="settings-title">Configuración del Sistema</h1>
+      <p class="settings-subtitle">
+        Administra tu perfil, la farmacia, las preferencias de interfaz y la seguridad de tu cuenta.
+      </p>
     </div>
   </div>
 
-  <div class="cards-grid">
-    <!-- Apariencia -->
-    <div class="card span-6">
-      <h4>Apariencia</h4>
-      <p class="text-muted-2" style="font-size:13px">
-        Cambia entre modo claro y oscuro. La preferencia se guardará para todas las pantallas.
-      </p>
+  <!-- Mensajes -->
+  {% if messages %}
+    <div class="settings-messages mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show"
+             role="alert"
+             style="--bs-alert-border-radius: var(--border-radius); margin-bottom: 0.4rem;">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"
+                  aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
 
-      <div class="d-flex align-items-center gap-2 mt-2">
+  <!-- LAYOUT PRINCIPAL: usamos Bootstrap row/col -->
+  <div class="row g-3 settings-layout">
+
+    <!-- =============== COLUMNA IZQUIERDA: PERFIL + AYUDA =============== -->
+    <div class="col-lg-4 col-md-5">
+
+      <!-- Perfil -->
+      <section class="card settings-card profile-card mb-3">
+        <div class="profile-card-body">
+          {% if user_data %}
+          <div class="profile-avatar-wrapper">
+            <div class="avatar-xl">
+              {{ user_data.nombre|first }}{{ user_data.apellido|first }}
+            </div>
+          </div>
+          <h2 class="profile-name">
+            {{ user_data.nombre }} {{ user_data.apellido }}
+          </h2>
+          <p class="profile-email">{{ user_data.email }}</p>
+          <p class="profile-role">
+            Rol:
+            <span class="badge-soft badge-soft-info">
+              {{ user_data.rol|capfirst }}
+            </span>
+          </p>
+          {% if pharmacy_data %}
+          <div class="profile-pill">
+            <i class="bi bi-shop me-1"></i>
+            {{ pharmacy_data.nombre }}
+          </div>
+          {% endif %}
+          {% else %}
+          <p class="text-muted-2 small mb-0">
+            No se pudo cargar la información del perfil.
+          </p>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- Ayuda -->
+      <section class="card settings-card help-card">
+        <div class="help-card-body">
+          <div class="help-icon-bubble">
+            <i class="bi bi-chat-dots"></i>
+          </div>
+          <h3 class="help-title">Preferencias del Sistema</h3>
+          <p class="help-text">
+            Configura las preferencias de la interfaz, notificaciones y otras opciones para personalizar tu experiencia.
+          </p>
+           <div class="d-flex align-items-center gap-2 mt-2">
         <button id="theme-light" class="btn-ghost">
           <i class="bi bi-sun"></i> Claro
         </button>
@@ -34,20 +93,304 @@
           <i class="bi bi-moon-stars"></i> Oscuro
         </button>
       </div>
-
-      <div class="text-muted-2 mt-2" style="font-size:12px">
-        El modo oscuro usa variables CSS definidas en <code>[data-theme="dark"]</code>.
-      </div>
+          <p class="help-footnote">
+            Tiempo de respuesta estimado &lt; 24 h.
+          </p>
+        </div>
+      </section>
     </div>
 
-    <div class="card span-6">
-      <h4>Sesión y seguridad</h4>
-      <p class="text-muted-2" style="font-size:13px">
-        Aquí podrás configurar en el futuro opciones como cierre de sesión automático,
-        bloqueo por inactividad o doble verificación.
-      </p>
-    </div>
-  </div>
-</div>
+    <!-- =============== COLUMNA DERECHA: ESTADO + DATOS + SEGURIDAD =============== -->
+    <div class="col-lg-8 col-md-7">
+
+      <!-- Estado de cuenta -->
+      <section class="card settings-card status-card mb-3">
+        <div class="status-header">
+          <div>
+            <h2 class="settings-card-title mb-1">Estado de tu cuenta</h2>
+            <p class="settings-card-subtitle mb-0">
+              Todo parece correcto. Puedes actualizar tus datos cuando lo necesites.
+            </p>
+          </div>
+          <div class="status-meta text-end">
+            <div class="status-label">Última actualización</div>
+            <div class="status-value">
+              {{ user_data.actualizado_en|default:"-" }}
+            </div>
+          </div>
+        </div>
+
+        <div class="status-steps-wrapper">
+          <div class="status-steps-line"></div>
+          <div class="status-step status-complete">
+            <span class="status-dot"></span>
+            <span class="status-step-label">Cuenta creada</span>
+          </div>
+          <div class="status-step status-complete">
+            <span class="status-dot"></span>
+            <span class="status-step-label">Datos de perfil</span>
+          </div>
+          <div class="status-step status-current">
+            <span class="status-dot"></span>
+            <span class="status-step-label">Seguridad</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Datos personales / Farmacia -->
+      <section class="card settings-card details-card mb-3">
+        <div class="details-tabs">
+          <button class="details-tab-button active"
+                  type="button"
+                  data-tab-target="tab-perfil">
+            Datos personales
+          </button>
+          {% if user_role == 'admin' %}
+          <button class="details-tab-button"
+                  type="button"
+                  data-tab-target="tab-farmacia">
+            Datos de la farmacia
+          </button>
+          {% endif %}
+        </div>
+
+        <div class="details-tab-panels">
+
+          <!-- TAB: PERFIL -->
+          <div class="details-tab-panel active" id="tab-perfil">
+            {% if user_data %}
+            <form action="{% url 'settings' %}"
+                  method="POST"
+                  class="settings-form-grid mt-3">
+              {% csrf_token %}
+              <input type="hidden" name="form_type" value="profile" />
+
+              <div class="settings-form-row">
+                <label class="settings-form-label">Nombre</label>
+                <div class="settings-form-field">
+                  <input type="text"
+                         class="form-control"
+                         name="nombre"
+                         value="{{ user_data.nombre }}"
+                         required />
+                </div>
+              </div>
+
+              <div class="settings-form-row">
+                <label class="settings-form-label">Apellido</label>
+                <div class="settings-form-field">
+                  <input type="text"
+                         class="form-control"
+                         name="apellido"
+                         value="{{ user_data.apellido }}"
+                         required />
+                </div>
+              </div>
+
+              <div class="settings-form-row">
+                <label class="settings-form-label">Correo electrónico</label>
+                <div class="settings-form-field">
+                  <input type="email"
+                         class="form-control"
+                         name="email"
+                         value="{{ user_data.email }}"
+                         required />
+                </div>
+              </div>
+
+              <div class="settings-form-row">
+                <label class="settings-form-label">Rol</label>
+                <div class="settings-form-field">
+                  <input type="text"
+                         class="form-control"
+                         value="{{ user_data.rol|capfirst }}"
+                         disabled
+                         readonly />
+                </div>
+              </div>
+
+              <div class="settings-form-actions">
+                <button type="submit" class="btn btn-primary">
+                  Guardar cambios de perfil
+                </button>
+              </div>
+            </form>
+            {% else %}
+            <p class="text-danger mb-0">
+              No se pudo cargar la información del perfil.
+            </p>
+            {% endif %}
+          </div>
+
+          <!-- TAB: FARMACIA -->
+          {% if user_role == 'admin' %}
+          <div class="details-tab-panel" id="tab-farmacia">
+            {% if pharmacy_data %}
+            <form action="{% url 'settings' %}"
+                  method="POST"
+                  class="settings-form-grid mt-3">
+              {% csrf_token %}
+              <input type="hidden" name="form_type" value="pharmacy" />
+
+              <div class="settings-form-row">
+                <label class="settings-form-label">Nombre de la farmacia</label>
+                <div class="settings-form-field">
+                  <input type="text"
+                         class="form-control"
+                         name="farmacia_nombre"
+                         value="{{ pharmacy_data.nombre }}"
+                         required />
+                </div>
+              </div>
+
+              <div class="settings-form-row">
+                <label class="settings-form-label">Dirección completa</label>
+                <div class="settings-form-field">
+                  <input type="text"
+                         class="form-control"
+                         name="farmacia_direccion"
+                         value="{{ pharmacy_data.direccion }}"
+                         required />
+                </div>
+              </div>
+
+              <div class="settings-form-row settings-form-row-2col">
+                <div>
+                  <label class="settings-form-label">Teléfono</label>
+                  <div class="settings-form-field">
+                    <input type="tel"
+                           class="form-control"
+                           name="farmacia_telefono"
+                           value="{{ pharmacy_data.telefono }}" />
+                  </div>
+                </div>
+                <div>
+                  <label class="settings-form-label">RFC</label>
+                  <div class="settings-form-field">
+                    <input type="text"
+                           class="form-control"
+                           name="farmacia_rfc"
+                           value="{{ pharmacy_data.rfc }}" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-form-row">
+                <label class="settings-form-label">Correo de contacto</label>
+                <div class="settings-form-field">
+                  <input type="email"
+                         class="form-control"
+                         name="farmacia_contacto"
+                         value="{{ pharmacy_data.email_contacto }}" />
+                </div>
+              </div>
+
+              <div class="settings-form-actions">
+                <button type="submit" class="btn btn-primary">
+                  Guardar datos de la farmacia
+                </button>
+              </div>
+            </form>
+            {% else %}
+            <p class="text-muted-2 mb-0">
+              No se encontró información de la farmacia para editar.
+            </p>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- Seguridad -->
+       
+      <section class="card settings-card security-card">
+        <div class="settings-card-header">
+          <div class="settings-card-icon-wrapper d-flex align-items-center gap-2">
+            <div class="settings-card-icon bg-soft-success">
+              <i class="bi bi-shield-lock"></i>
+            </div>
+            <div>
+              <h2 class="settings-card-title mb-0">Seguridad</h2>
+              <p class="settings-card-subtitle mb-0">
+                Cambia tu contraseña y mantén segura tu cuenta.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card-content settings-security">
+          <div class="settings-security-tips">
+            <h3 class="settings-section-label mb-2">Recomendaciones</h3>
+            <ul>
+              <li>Usa una contraseña única para Pharmacontrol.</li>
+              <li>Incluye mayúsculas, minúsculas, números y símbolos.</li>
+              <li>No compartas tus credenciales con nadie.</li>
+            </ul>
+          </div>
+
+          <form action="{% url 'settings' %}"
+                method="POST"
+                class="settings-form-grid settings-security-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="password" />
+
+            <div class="settings-form-row">
+              <label class="settings-form-label">Contraseña actual</label>
+              <div class="settings-form-field">
+                <input type="password"
+                       class="form-control"
+                       name="current_password"
+                       required />
+              </div>
+            </div>
+
+            <div class="settings-form-row">
+              <label class="settings-form-label">Nueva contraseña</label>
+              <div class="settings-form-field">
+                <input type="password"
+                       class="form-control"
+                       name="new_password"
+                       required />
+              </div>
+            </div>
+
+            <div class="settings-form-actions">
+              <button type="submit" class="btn btn-secondary">
+                Cambiar contraseña
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div> <!-- /col derecha -->
+
+  </div> <!-- /row -->
+
+</div> <!-- /settings-dashboard -->
+
+<!-- Tabs JS -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const buttons = document.querySelectorAll(".details-tab-button");
+  const panels = document.querySelectorAll(".details-tab-panel");
+
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.getAttribute("data-tab-target");
+
+      buttons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      panels.forEach((panel) => {
+        if (panel.id === targetId) {
+          panel.classList.add("active");
+        } else {
+          panel.classList.remove("active");
+        }
+      });
+    });
+  });
+});
+</script>
 
 {% endblock %}

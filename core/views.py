@@ -1,9 +1,8 @@
-# views.py
+import requests
 import json
 from datetime import datetime, date, timedelta
 import base64
-from collections import Counter
-import requests
+from collections import Counter, defaultdict
 import unicodedata
 import urllib.parse
 
@@ -16,10 +15,10 @@ from django.contrib import messages, auth
 from core.decorators import login_required_custom
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.views.decorators.http import require_http_methods 
+from django.views.decorators.http import require_http_methods
 
 from django.conf import settings
-from api_client import API_BASE_URL  
+from api_client import API_BASE_URL
 from django.core.mail import send_mail
 from django.core.mail import BadHeaderError
 import logging
@@ -30,8 +29,14 @@ from django.core.cache import cache
 from django.core.validators import validate_email
 from functools import wraps
 from django.core.exceptions import ValidationError
+from io import BytesIO
+from fpdf import FPDF
+import hashlib
 
 logger = logging.getLogger(__name__)
+
+# ===== sesión HTTP reutilizable =====
+session = requests.Session()
 
 # =========================
 # Config
@@ -40,27 +45,28 @@ logger = logging.getLogger(__name__)
 NEST_BASE = settings.API_URL
 
 API = {
-    "meds_all":     f"{NEST_BASE}/api/medicamentos/all",
+    "meds_all":     f"{NEST_BASE}/api/medicamentos/",  # Endpoint ahora paginado
     "meds_count":   f"{NEST_BASE}/api/medicamentos/count",
     "meds_get":     f"{NEST_BASE}/api/medicamentos",  # /:id
     "meds_create":  f"{NEST_BASE}/api/medicamentos/create",
     "meds_update":  f"{NEST_BASE}/api/medicamentos/update",  # /:id
     "meds_delete":  f"{NEST_BASE}/api/medicamentos/delete",  # /:id
     "users_all":    f"{NEST_BASE}/api/users/all",
+    "meds_stats":   f"{NEST_BASE}/api/medicamentos/stats",  # <-- endpoint de estadísticas
     "users_get":    f"{NEST_BASE}/api/users",  # /:id
     "users_create": f"{NEST_BASE}/api/users/create",
     "users_update": f"{NEST_BASE}/api/users/update",  # /:id
     "users_delete": f"{NEST_BASE}/api/users/delete",  # /:id
-    "prov_list":   f"{NEST_BASE}/api/proveedores/all",
-    "prov_create": f"{NEST_BASE}/api/proveedores/create/",          # POST
-    "prov_detail": f"{NEST_BASE}/api/proveedores",          # /:id
-    "prov_update": f"{NEST_BASE}/api/proveedores/update/",  # /:id
-    "prov_delete": f"{NEST_BASE}/api/proveedores/delete/",  # /:id
+    "prov_list":    f"{NEST_BASE}/api/proveedores/all",
+    "prov_create":  f"{NEST_BASE}/api/proveedores/create/",          # POST
+    "prov_detail":  f"{NEST_BASE}/api/proveedores",                  # /:id
+    "prov_update":  f"{NEST_BASE}/api/proveedores/update/",  # /:id
+    "prov_delete":  f"{NEST_BASE}/api/proveedores/delete/",  # /:id
     "venta":        f"{NEST_BASE}/api/venta",
     "cats_all":     f"{NEST_BASE}/api/categorias/all",
     "farm_all":     f"{NEST_BASE}/api/farmacia",
-
-
+    "farm_get":     f"{NEST_BASE}/api/farmacia",                  # /:id
+    "farm_update":  f"{NEST_BASE}/api/farmacia/update",           # /:id
 
     # Pedidos
     "orders_list":   f"{NEST_BASE}/api/pedidos",
@@ -77,19 +83,18 @@ API = {
 }
 
 # Documentos / Ventas (como constantes claras)
-DOCS_LIST        = f"{NEST_BASE}/api/documentos"              # ...?tipo=venta|IA (si lo usas)
-DOCS_FILE        = f"{NEST_BASE}/api/documentos"              # .../:id (si alguna vez es PDF directo)
-DOCS_DESCARGAR   = f"{NEST_BASE}/api/documentos/descargar"    # <-- ESTE devuelve JSON de ticket
-VENTAS_GET       = f"{NEST_BASE}/api/ventas"                  # .../:id
-
+DOCS_LISTAR    = f"{NEST_BASE}/api/documentos/listar"       # GET para listar todos los docs
+DOCS_FILE      = f"{NEST_BASE}/api/documentos"              # .../:id (si alguna vez es PDF directo)
+DOCS_DESCARGAR = f"{NEST_BASE}/api/documentos/descargar"    # <-- ESTE devuelve JSON de ticket
+VENTAS_GET     = f"{NEST_BASE}/api/ventas"                  # .../:id
 
 API.update({
-    "meds_search": f"{NEST_BASE}/api/medicamentos/all",  # si existe en Nest
-    "meds_all":    API.get("meds_all") or f"{NEST_BASE}/api/medicamentos/all", # recomendado
-    "prov_search": f"{NEST_BASE}/api/proveedores/all",
+    "meds_search":   f"{NEST_BASE}/api/medicamentos/all",  # si existe en Nest
+    "meds_all":      API.get("meds_all") or f"{NEST_BASE}/api/medicamentos/all",
+    "prov_search":   f"{NEST_BASE}/api/proveedores/all",
     "orders_search": f"{NEST_BASE}/api/pedidos",
     "ventas_search": f"{NEST_BASE}/api/ventas/search",
-    "ventas_all":    f"{NEST_BASE}/api/ventas",               # fallback
+    "ventas_all":    f"{NEST_BASE}/api/ventas",
 })
 
 # =========================
@@ -98,19 +103,24 @@ API.update({
 def _auth_headers(request):
     token = request.session.get("jwt")
     headers = {"Accept": "application/json"}
-    # El content-type se añade en las funciones _post, _put, _patch
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return headers
 
+
 def _get(request, url, params=None):
     try:
-        # Añadir parámetros a la URL si existen
         if params:
-            # Filtra valores None o vacíos
-            filtered_params = {k: v for k, v in params.items() if v is not None and v != ''}
-            url = f"{url}?{urllib.parse.urlencode(filtered_params)}"
-        r = requests.get(url, headers=_auth_headers(request), timeout=10)
+            filtered_params = {k: v for k, v in params.items() if v not in (None, "")}
+        else:
+            filtered_params = None
+
+        r = session.get(
+            url,
+            headers=_auth_headers(request),
+            params=filtered_params,
+            timeout=10,
+        )
         if r.status_code == 401:
             return "unauthorized", []
         if r.ok:
@@ -120,12 +130,14 @@ def _get(request, url, params=None):
         pass
     return None, []
 
+
 def _post(request, url, payload):
     try:
         headers = _auth_headers(request)
-        headers['Content-Type'] = 'application/json'
+        headers["Content-Type"] = "application/json"
         logger.info("POST -> %s payload=%s", url, payload)
-        r = requests.post(url, json=payload, headers=headers, timeout=10)
+
+        r = session.post(url, json=payload, headers=headers, timeout=10)
         if r.status_code == 401:
             return "unauthorized", None
         return None, r
@@ -136,46 +148,57 @@ def _post(request, url, payload):
             ok = False
             status_code = 502
             text = str(e)
+
         return None, DummyResponse()
 
 
 def _put(request, url, payload):
     try:
         headers = _auth_headers(request)
-        headers['Content-Type'] = 'application/json'
-
+        headers["Content-Type"] = "application/json"
         logger.info("PUT -> %s", url)
-        r = requests.put(url, json=payload, headers=headers, timeout=10)
 
+        r = session.put(url, json=payload, headers=headers, timeout=10)
         if r.status_code == 401:
             return "unauthorized", None
-
         return None, r
     except requests.RequestException as e:
         logger.exception("Error llamando PUT %s: %s", url, e)
 
-        # Devolvemos un objeto similar a Response para que la vista no truene
         class DummyResponse:
             ok = False
             status_code = 502
             text = str(e)
+
         return None, DummyResponse()
 
 
 def _delete(request, url):
     try:
-        r = requests.delete(url, headers=_auth_headers(request), timeout=10)
+        r = session.delete(url, headers=_auth_headers(request), timeout=10)
         if r.status_code == 401:
             return "unauthorized", None
         return None, r
     except requests.RequestException:
         return None, None
 
+
+def _patch(request, url, payload):
+    try:
+        headers = _auth_headers(request)
+        headers["Content-Type"] = "application/json"
+        r = session.patch(url, json=payload, headers=headers, timeout=10)
+        if r.status_code == 401:
+            return "unauthorized", None
+        return None, r
+    except requests.RequestException:
+        return None, None
+
+
 def _parse_date(s):
     if not s:
         return None
     try:
-        # ISO YYYY-MM-DD
         return datetime.fromisoformat(s).date()
     except Exception:
         try:
@@ -184,20 +207,192 @@ def _parse_date(s):
         except Exception:
             return None
 
-def _patch(request, url, payload):
-    try:
-        headers = _auth_headers(request)
-        headers['Content-Type'] = 'application/json'
-        r = requests.patch(url, json=payload, headers=headers, timeout=10)
-        if r.status_code == 401:
-            return "unauthorized", None
-        return None, r
-    except requests.RequestException:
-        return None, None
 
 def _strip_accents(s: str) -> str:
     return ''.join(c for c in unicodedata.normalize('NFD', s or '') if unicodedata.category(c) != 'Mn')
 
+
+def _cached_get(request, url, params=None, cache_seconds=30):
+    """
+    Igual que _get, pero guarda la respuesta en cache unos segundos.
+    """
+    token = request.session.get("jwt") or ""
+    key_parts = [
+        url,
+        json.dumps(params, sort_keys=True) if params else "",
+        token[:16],
+    ]
+    raw_key = "|".join(key_parts)
+    cache_key = "apicache:" + hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return None, cached
+
+    err, data = _get(request, url, params)
+    if err is None:
+        cache.set(cache_key, data, cache_seconds)
+    return err, data
+
+#=====================================
+# Helpers PDF / Tickets
+#=====================================
+
+from fpdf import FPDF
+
+# =====================================
+# Helpers PDF / Tickets (versión mejorada)
+# =====================================
+def _build_ticket_pdf(ticket_data: dict) -> bytes:
+    """
+    Genera un PDF tipo ticket de venta usando FPDF
+    con un diseño más limpio y profesional.
+    """
+    # Ticket tamaño 80mm con un alto suficiente (auto page break)
+    pdf = FPDF("P", "mm", (80, 220))
+    pdf.set_auto_page_break(auto=True, margin=6)
+    pdf.set_margins(5, 8, 5)
+    pdf.add_page()
+
+    venta = ticket_data
+    tipo = (venta.get("tipoReporte") or venta.get("tipo") or "Venta").upper()
+
+    usuario_data = venta.get("usuario") or {}
+    farmacia = venta.get("farmacia") or usuario_data.get("farmacia") or {}
+
+    folio = venta.get("folio") or venta.get("id") or venta.get("_id") or "S/F"
+    fecha_raw = venta.get("fecha") or venta.get("createdAt") or ""
+    fecha_str = fecha_raw[:16].replace("T", " ") if fecha_raw else ""
+
+    cliente_nombre = (usuario_data.get("nombre") or "").strip()
+    cliente_apellido = (usuario_data.get("apellido") or "").strip()
+    cliente = f"{cliente_nombre} {cliente_apellido}".strip() or "Público en general"
+
+    total = float(venta.get("total") or 0)
+    items = venta.get("detalles") or venta.get("items") or []
+
+    fam_nombre = farmacia.get("nombre") or farmacia.get("razonSocial") or "FARMACIA"
+    fam_dir = farmacia.get("direccion") or ""
+    fam_tel = farmacia.get("telefono") or farmacia.get("telefono1") or ""
+    fam_rfc = farmacia.get("rfc") or ""
+
+    # ===============================
+    # ENCABEZADO FARMACIA
+    # ===============================
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 5, fam_nombre, ln=1, align="C")
+
+    pdf.set_font("Helvetica", "", 8)
+    if fam_dir:
+        pdf.multi_cell(0, 4, fam_dir, align="C")
+    if fam_tel:
+        pdf.cell(0, 4, f"Tel: {fam_tel}", ln=1, align="C")
+    if fam_rfc:
+        pdf.cell(0, 4, f"RFC: {fam_rfc}", ln=1, align="C")
+
+    pdf.ln(2)
+
+    # Línea suave separadora
+    pdf.set_draw_color(210, 210, 210)
+    y = pdf.get_y()
+    pdf.line(5, y, 75, y)
+    pdf.ln(2)
+
+    # ===============================
+    # DATOS GENERALES DE LA VENTA
+    # ===============================
+    pdf.set_font("Helvetica", "", 8)
+    pdf.cell(0, 4, f"Folio: {folio}", ln=1)
+    if fecha_str:
+        pdf.cell(0, 4, f"Fecha: {fecha_str}", ln=1)
+    pdf.cell(0, 4, f"Tipo: {tipo}", ln=1)
+    pdf.cell(0, 4, f"Atendió: {cliente}", ln=1)
+
+    pdf.ln(2)
+    y = pdf.get_y()
+    pdf.line(5, y, 75, y)
+    pdf.ln(2)
+
+    # ===============================
+    # TABLA DE DETALLE
+    # ===============================
+    col_cant = 10
+    col_prod = 38
+    col_punit = 12
+    col_imp = 15
+
+    # Cabecera
+    pdf.set_font("Helvetica", "B", 8)
+    pdf.cell(col_cant, 5, "Cant", border=0, align="C")
+    pdf.cell(col_prod, 5, "Producto", border=0, align="L")
+    pdf.cell(col_punit, 5, "P.Unit", border=0, align="R")
+    pdf.cell(col_imp, 5, "Importe", border=0, align="R")
+    pdf.ln(4)
+
+    pdf.set_draw_color(220, 220, 220)
+    y = pdf.get_y()
+    pdf.line(5, y, 75, y)
+    pdf.ln(1)
+
+    pdf.set_font("Helvetica", "", 8)
+
+    for it in items:
+        cant = it.get("cantidad") or it.get("qty") or 0
+        precio_unit = float(it.get("precioUnitario") or it.get("precio") or 0)
+        subtotal = float(it.get("subtotal") or (cant * precio_unit))
+
+        med = it.get("medicamento") or {}
+        nombre_med = (
+            med.get("nombre")
+            or it.get("nombreMedicamento")
+            or it.get("descripcion")
+            or "Producto"
+        )
+
+        # Primera línea: Cantidad + Nombre (acotado)
+        pdf.cell(col_cant, 4, str(cant), border=0, align="C")
+        pdf.cell(col_prod, 4, nombre_med[:26], border=0, align="L")
+        pdf.cell(col_punit, 4, f"{precio_unit:,.2f}", border=0, align="R")
+        pdf.cell(col_imp, 4, f"{subtotal:,.2f}", border=0, align="R")
+        pdf.ln(4)
+
+        # Si el nombre es largo, mostramos la “cola” en una segunda línea
+        if len(nombre_med) > 26:
+            tail = nombre_med[26:52]
+            pdf.cell(col_cant, 4, "", border=0)
+            pdf.cell(col_prod, 4, tail, border=0, align="L")
+            pdf.ln(4)
+
+    pdf.ln(2)
+    y = pdf.get_y()
+    pdf.set_draw_color(210, 210, 210)
+    pdf.line(5, y, 75, y)
+    pdf.ln(2)
+
+    # ===============================
+    # TOTAL / RESUMEN
+    # ===============================
+    pdf.set_font("Helvetica", "B", 9)
+    # Bloque resaltado para el total
+    x_left = 5
+    x_right = 75
+    y_top = pdf.get_y()
+    pdf.set_fill_color(240, 240, 240)
+    pdf.rect(x_left, y_top, x_right - x_left, 7, style="F")
+    pdf.set_xy(x_left, y_top + 1.5)
+    pdf.cell(0, 4, f"TOTAL: ${total:,.2f}", ln=1, align="R")
+
+    pdf.ln(4)
+    pdf.set_font("Helvetica", "", 7)
+    pdf.multi_cell(
+        0,
+        3,
+        "Gracias por su compra.\nConserve este ticket como comprobante.",
+        align="C",
+    )
+
+    pdf_bytes = pdf.output(dest="S").encode("latin1")
+    return pdf_bytes
 
 # =========================
 # Bridge (JS -> Django session)
@@ -209,10 +404,7 @@ def bridge_clear_token(request):
     Limpia completamente la sesión de Django.
     """
     try:
-        # Flush completo de sesión
         request.session.flush()
-        
-        # Asegurar que la cookie se elimine
         response = JsonResponse({"ok": True})
         response.delete_cookie('sessionid')
         return response
@@ -225,7 +417,10 @@ def bridge_clear_token(request):
 @csrf_exempt
 def bridge_store_token(request):
     """
-    Guarda el accessToken en la sesión de Django y extrae el rol del usuario.
+    Guarda el accessToken en la sesión de Django y extrae:
+    - rol del usuario
+    - farmacia_id
+    - nombre, apellido, email (para sidebar / usuario activo)
     """
     try:
         data = json.loads(request.body or "{}")
@@ -233,34 +428,76 @@ def bridge_store_token(request):
         if not token:
             return HttpResponseBadRequest("no token")
 
-        # Guardar en sesión
+        # 1) Guardar JWT en sesión
         request.session["jwt"] = token
 
-        # --- INICIO DE LA SOLUCIÓN ---
-        # Decodificar el payload del JWT para obtener el rol
+        user_role = None
+        farmacia_id = None
+        user_id = None
+        user_data = None
+        user_nombre = ""
+        user_apellido = ""
+        user_email = ""
+
         try:
-            # Un JWT tiene 3 partes separadas por '.'. El payload es la segunda.
-            payload_b64 = token.split('.')[1]
-            # El payload en base64 puede no tener el padding correcto, lo añadimos.
-            payload_b64 += '=' * (-len(payload_b64) % 4)
-            # Decodificamos de base64 a bytes, y luego de bytes a string (utf-8)
-            payload_json = base64.b64decode(payload_b64).decode('utf-8')
-            # Parseamos el string JSON a un diccionario de Python
+            # 2) Decodificar el payload del JWT
+            payload_b64 = token.split(".")[1]
+            payload_b64 += "=" * (-len(payload_b64) % 4)
+            payload_json = base64.b64decode(payload_b64).decode("utf-8")
             payload_data = json.loads(payload_json)
-            # Guardamos el rol en la sesión. Asumimos que el campo se llama 'rol'.
-            request.session["user_role"] = payload_data.get("rol")
+
+            user_role = payload_data.get("rol")
+            user_id = payload_data.get("sub") or payload_data.get("userId")
+
+            # Si viene farmacia en el token, úsala
+            farmacia_id = (
+                payload_data.get("farmaciaId")
+                or payload_data.get("farmacia_id")
+            )
+
+            request.session["user_role"] = user_role
+
         except Exception as e:
-            # Si falla la decodificación, no asignamos rol y lo registramos.
-            logger.error(f"Error decodificando JWT para obtener rol: {e}")
-            request.session["user_role"] = None
-        # --- FIN DE LA SOLUCIÓN ---
+            logger.error(f"Error decodificando JWT: {e}")
+            if "user_role" not in request.session:
+                request.session["user_role"] = None
+
+        # 3) Obtener datos completos del usuario desde la API
+        if user_id:
+            url = f'{API["users_get"]}/{user_id}'   # /api/users/:id
+            err, user_data = _get(request, url)
+            if not err and isinstance(user_data, dict):
+                user_nombre = (user_data.get("nombre") or "").strip()
+                user_apellido = (user_data.get("apellido") or "").strip()
+                user_email = (user_data.get("email") or "").strip()
+
+                # Si no teníamos farmacia_id, la sacamos de aquí
+                if not farmacia_id:
+                    farmacia = user_data.get("farmacia") or {}
+                    if isinstance(farmacia, dict):
+                        farmacia_id = farmacia.get("id")
+
+        # 4) Guardar todo en sesión (aunque algunos vengan vacíos)
+        request.session["farmacia_id"] = farmacia_id
+        request.session["user_nombre"] = user_nombre
+        request.session["user_apellido"] = user_apellido
+        request.session["user_email"] = user_email
+        request.session["user_data"] = user_data or {}
 
         request.session.modified = True
-        return JsonResponse({"ok": True})
+
+        return JsonResponse({
+            "ok": True,
+            "farmaciaId": farmacia_id,
+            "rol": user_role,
+            "nombre": user_nombre,
+            "apellido": user_apellido,
+            "email": user_email,
+        })
+
     except Exception as e:
         logger.error(f"Error storing token: {e}")
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
-
 
 # =========================
 # Decoradores de Seguridad
@@ -274,37 +511,29 @@ def role_required(*roles):
             user_role = request.session.get("user_role")
             if user_role not in roles:
                 messages.error(request, "No tienes permiso para acceder a esta página.")
-                return redirect("medicamentos") # Redirigir al dashboard por defecto
+                return redirect("medicamentos")
             return view_func(request, *args, **kwargs)
         return _wrapped_view
     return decorator
+
 # =========================
 # Public Pages (Home, etc.)
 # =========================
 def home_view(request):
-    """
-    Renderiza la página de inicio pública (landing page).
-    """
     return render(request, "core/Home.html")
 
 
 @require_POST
 def contact_view(request):
-    """Procesa el formulario de contacto público y envía un email al administrador.
-
-    Protecciones incluidas:
-    - Honeypot (campo oculto `hp` en el formulario)
-    - Validación básica de email
-    - Rate-limit por IP usando cache (5 mensajes / hora)
-    - Envío multipart (text + HTML) con `Reply-To` al email del cliente
-    - Fallback a consola si falla la autenticación SMTP
-    """
+    # ... (SIN CAMBIOS, usa el mismo contenido que ya tienes)
+    # Para no hacer esto eterno, deja aquí exactamente lo que ya tienes en tu archivo,
+    # sólo cambiamos los helpers de arriba.
+    # ⬇️ Pega aquí el bloque completo de contact_view que ya tenías.
     name = (request.POST.get('name') or '').strip()
     email = (request.POST.get('email') or '').strip()
     message = (request.POST.get('message') or '').strip()
     honeypot = (request.POST.get('hp') or '').strip()
 
-    # Honeypot: si tiene contenido, tratamos como spam silenciosamente
     if honeypot:
         logger.info('Contact form honeypot triggered; dropping submission')
         return redirect('home')
@@ -313,14 +542,12 @@ def contact_view(request):
         messages.error(request, 'Por favor completa todos los campos del formulario de contacto.')
         return redirect('home')
 
-    # Validar email del remitente (cliente)
     try:
         validate_email(email)
     except ValidationError:
         messages.error(request, 'Por favor ingresa un correo válido.')
         return redirect('home')
 
-    # Rate-limit simple por IP: 5 envíos por hora
     ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', 'unknown')).split(',')[0].strip()
     rl_key = f"contact_rl:{ip}"
     try:
@@ -333,23 +560,18 @@ def contact_view(request):
                 cache.incr(rl_key)
                 count = cache.get(rl_key)
             except Exception:
-                # some cache backends may not support incr on missing keys concurrently
                 cache.set(rl_key, int(count) + 1, timeout=3600)
                 count = cache.get(rl_key)
         if int(count) > 5:
             messages.error(request, 'Has enviado demasiados mensajes. Intenta nuevamente más tarde.')
             return redirect('home')
     except Exception:
-        # Si falla el cache por alguna razón, no bloqueamos el envío, solo lo registramos
         logger.exception('Error checking rate limit cache for contact form')
 
     subject = f"Contacto Pharmacontrol: {name}"
-
-    # Recipient(s)
     recipient = [getattr(settings, 'CONTACT_RECIPIENT', None) or 'pharmacontrolcc@gmail.com']
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'webmaster@localhost')
 
-    # Render templates for text and HTML bodies
     context = {
         'name': name,
         'email': email,
@@ -364,7 +586,6 @@ def contact_view(request):
         conn = get_connection()
         msg = EmailMultiAlternatives(subject, text_body, from_email, recipient, connection=conn, reply_to=[email])
         msg.attach_alternative(html_body, 'text/html')
-        # Optional BCC if configured
         bcc = getattr(settings, 'CONTACT_BCC', None)
         if bcc:
             if isinstance(bcc, (list, tuple)):
@@ -378,7 +599,6 @@ def contact_view(request):
         messages.error(request, 'Encabezado inválido en el mensaje.')
     except Exception as e:
         logger.exception('Unexpected error sending contact email')
-        # Detect SMTP auth error and fallback to console backend for local testing
         if isinstance(e, smtplib.SMTPAuthenticationError) or (hasattr(e, 'smtp_code') and getattr(e, 'smtp_code', None) == 535):
             try:
                 conn = get_connection('django.core.mail.backends.console.EmailBackend')
@@ -395,211 +615,234 @@ def contact_view(request):
 
     return redirect('home')
 
-def register_view(request):
-    """
-    Placeholder for registration page. Redirects to home for now.
-    """
-    # Later, this will render the registration form.
-    # For now, we redirect to prevent errors on the home page.
-    return redirect("home")
 
+def register_view(request):
+    return redirect("home")
 
 # =========================
 # Login / Logout (UI)
 # =========================
 def login_view(request):
-    """
-    Renderiza la página de login.
-    La lógica de autenticación y redirección post-login es manejada
-    completamente por el JavaScript del lado del cliente (dashboard.js).
-    """
-
-    # Para todos los demás (no logueados, vendedores, etc.), muestra el login.
-    # El JS se encargará de la autenticación y de la redirección post-login.
     return render(request, "core/login.html")
 
+
 @require_POST
-@csrf_exempt # El logout desde JS no enviará token CSRF
+@csrf_exempt
 def logout_view(request):
-    """
-    Endpoint de logout para Django. Destruye la sesión completa.
-    Es un alias/fallback para bridge_clear_token.
-    """
     try:
         request.session.flush()
-    except Exception: pass
+    except Exception:
+        pass
     return render(request, "core/login.html")
 
 # =========================
 # Dashboard / Medicamentos
 # =========================
-
-
 @role_required("admin", "usuario")
 def medicamentos_view(request):
-    err, meds = _get(request, API["meds_all"])
+    """
+    Dashboard principal.
+    Ahora la API /api/medicamentos devuelve:
+      { data: [...], total: N, page: 1, totalPages: M }
+
+    Aquí pedimos muchos (limit grande) para que el dashboard tenga
+    todas las tarjetas y la tabla.
+    """
+    params = {
+        "page": 1,
+        "limit": 1000,  # suficiente para tu 66 actuales; ajusta si crece mucho
+    }
+
+    err, response = _get(request, API["meds_all"], params=params)
     if err == "unauthorized":
         return redirect("login")
-    meds = meds if isinstance(meds, list) else []
+
+    # Adaptar al nuevo formato
+    if isinstance(response, dict):
+        meds = response.get("data", []) or []
+    elif isinstance(response, list):
+        meds = response
+    else:
+        meds = []
 
     if not meds:
-        messages.warning(request, 'No se pudieron cargar los datos de los medicamentos. La API no devolvió información o no hay medicamentos registrados.')
+        messages.warning(
+            request,
+            "No se pudieron cargar los datos de los medicamentos. "
+            "La API no devolvió información o no hay medicamentos registrados."
+        )
 
-    # KPIs
+    # ===== KPIs básicos =====
     total = len(meds)
-    criticos = sum(1 for m in meds if (m.get("stock") or 0) < 10)
     hoy = date.today()
+
+    criticos = sum(1 for m in meds if (m.get("stock") or 0) < 10)
+
     caducados = 0
     for m in meds:
         d = _parse_date(m.get("caducidad"))
         if d and d < hoy:
             caducados += 1
 
-    resumen = {"disponibles": max(0, total - criticos - caducados),
-               "criticos": criticos, "caducados": caducados}
+    resumen = {
+        "disponibles": max(0, total - criticos - caducados),
+        "criticos": criticos,
+        "caducados": caducados,
+    }
 
-    # Top stock
+    # ===== Top por stock =====
     top = sorted(meds, key=lambda m: m.get("stock") or 0, reverse=True)[:15]
-    stockTop = {"labels": [m.get("nombre") or "" for m in top],
-                "values": [m.get("stock") or 0 for m in top]}
+    stockTop = {
+        "labels": [m.get("nombre") or "" for m in top],
+        "values": [m.get("stock") or 0 for m in top],
+    }
 
-    # Categorías
+    # ===== Categorías =====
     def cat_name(m):
         c = m.get("categoria")
-        return c.get("nombre") if isinstance(c, dict) else (c or "Sin categoría")
+        if isinstance(c, dict):
+            return c.get("nombre") or "Sin categoría"
+        return c or "Sin categoría"
+
     cnt = Counter(cat_name(m) for m in meds)
-    categorias = {"labels": list(cnt.keys()), "values": list(cnt.values())}
+    categorias = {
+        "labels": list(cnt.keys()),
+        "values": list(cnt.values()),
+    }
 
-    # Rotación dummy
-    rotacion = {"labels": categorias["labels"], "values": [v*6 for v in categorias["values"]]}
+    # ===== Rotación falsa (por ahora) =====
+    rotacion = {
+        "labels": categorias["labels"],
+        "values": [v * 6 for v in categorias["values"]],
+    }
 
-    # Vencimientos
-    def within_days(s, days):
-        d = _parse_date(s); 
-        return bool(d and hoy <= d <= date.fromordinal(hoy.toordinal()+days))
+    # ===== Vencimientos 30/60/90 =====
+    def within_days(cad_str, days):
+        d = _parse_date(cad_str)
+        return bool(d and hoy <= d <= (hoy + timedelta(days=days)))
+
     vencimientos = {
         "d30": sum(1 for m in meds if within_days(m.get("caducidad"), 30)),
         "d60": sum(1 for m in meds if within_days(m.get("caducidad"), 60)),
         "d90": sum(1 for m in meds if within_days(m.get("caducidad"), 90)),
     }
-    meds_json = json.dumps(meds, ensure_ascii=False)  # listado completo para JS
 
-    chart_data_json = json.dumps({
-        "resumen": resumen,
-        "stockTop": stockTop,
-        "categorias": categorias,
-        "rotacion": rotacion,
-        "vencimientos": vencimientos,
-    }, ensure_ascii=False)
+    chart_data_json = json.dumps(
+        {
+            "resumen": resumen,
+            "stockTop": stockTop,
+            "categorias": categorias,
+            "rotacion": rotacion,
+            "vencimientos": vencimientos,
+        },
+        ensure_ascii=False,
+    )
+
+    # MUY IMPORTANTE: el template usa window.__MEDS__ para:
+    #   - kpi-total  (M.length)
+    #   - tabla de medicamentos
+    meds_json = json.dumps(meds, ensure_ascii=False)
 
     contexto = {
         "meds_json": meds_json,
         "chart_data_json": chart_data_json,
-     # <— NUEVO
     }
     return render(request, "core/medicamentos.html", contexto)
-# =========================
-# Inventory (lista + paginación)
-# =========================
+
 # =========================
 # Inventory (lista + paginación)
 # =========================
 @role_required("admin")
 def inventory_view(request):
-    # 1) Obtener lista de medicamentos
-    err, meds = _get(request, API["meds_all"])
+    """
+    Inventario:
+    - Usa la paginación de la API Nest (/api/medicamentos?page=&limit=).
+    - Ordena alfabéticamente la página actual.
+    - Construye un Paginator real con una lista dummy para que
+      page_range, has_next, next_page_number(), etc. funcionen bien.
+    """
+    # --- página actual ---
+    try:
+        page_number = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page_number = 1
+
+    filtro = request.GET.get("filtro", "all")
+    limit = 15  # el mismo que usas en el front
+
+    # --- llamar a la API paginada ---
+    params = {"page": page_number, "limit": limit}
+    if filtro != "all":
+        params["filtro"] = filtro
+
+    err, response_data = _get(request, API["meds_all"], params=params)
     if err == "unauthorized":
         return redirect("login")
-    meds = meds if isinstance(meds, list) else []
 
-    if not meds:
-        messages.warning(
-            request,
-            'No se pudieron cargar los datos de los medicamentos. '
-            'La API no devolvió información o no hay medicamentos registrados.'
-        )
+    if isinstance(response_data, dict):
+        meds = response_data.get("data", []) or []
+        total_medicamentos = response_data.get("total", len(meds))
+    else:
+        meds = response_data if isinstance(response_data, list) else []
+        total_medicamentos = len(meds)
 
-    # 2) Filtro por querystring
-    filtro = request.GET.get('filtro', 'all')
-
-    # 3) Obtener total de medicamentos
-    err_count, count_data = _get(request, API["meds_count"])
-    if err_count == "unauthorized":
-        return redirect("login")
-
-    total_medicamentos = 0
-    if isinstance(count_data, dict):
-        for v in count_data.values():
-            if isinstance(v, int):
-                total_medicamentos = v
-                break
-
-    # === KPIs ===
-    hoy = date.today()
-    caducados = 0
+    # --- ordenar alfabéticamente la página actual ---
+    meds_sorted = sorted(
+        meds,
+        key=lambda m: _strip_accents((m.get("nombre") or "").lower()),
+    )
+    # ===== 4) KPIs desde /api/medicamentos/stats =====
     por_caducar = 0
-    stock_critico = 0
+    bajoStock = 0
     medicamento_agotado = 0
 
-    for m in meds:
-        stock = m.get("stock") or 0
-        d = _parse_date(m.get("caducidad"))
+    err_stats, stats = _cached_get(request, API["meds_stats"], cache_seconds=30)
+    if not err_stats and isinstance(stats, dict):
+        # Lo que SÍ sabemos que tienes (según tu screenshot)
+        total_medicamentos = stats.get("total", total_medicamentos)
+        por_caducar = stats.get("porCaducar", 0)
+        caducados = stats.get("caducados", 0)
 
-        if stock <= 0:
-            medicamento_agotado += 1
-        elif stock < 10:
-            stock_critico += 1
+        # Si después en la API agregan estos campos, ya están soportados:
+        bajoStock = stats.get("bajoStock", 0)
+        medicamento_agotado = stats.get(
+            "agotados",
+            stats.get("medicamentosAgotados", 0)
+        )
 
-        if d:
-            if d < hoy:
-                caducados += 1
-            else:
-                # Próximos a caducar (90 días)
-                if hoy <= d <= hoy + timedelta(days=90):
-                    por_caducar += 1
 
-    # 4) Aplicar filtro sobre la lista
-    if filtro == 'stock':
-        meds = [m for m in meds if (m.get("stock") or 0) > 0]
-    elif filtro == 'sin_stock':
-        meds = [m for m in meds if (m.get("stock") or 0) <= 0]
-    elif filtro == 'caducar':
-        proximos = hoy + timedelta(days=90)
-        meds = [
-            m for m in meds
-            if m.get("caducidad")
-            and hoy <= _parse_date(m.get("caducidad")) <= proximos
-        ]
-    # si filtro == 'all' no se modifica la lista
+    # --- paginator con lista dummy (para que Django calcule páginas) ---
+    # Por ejemplo, total_medicamentos = 63, limit = 15 => 5 páginas
+    dummy_list = [None] * max(total_medicamentos, 1)
+    paginator = Paginator(dummy_list, limit)
 
-    # 5) Paginación
-    paginator = Paginator(meds, 10)
-    page_number = request.GET.get("page", 1)
     try:
         page_obj = paginator.page(page_number)
-    except PageNotAnInteger:
+    except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
-    except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
+        page_number = 1
 
-    # Catálogos para el modal
-    _, proveedores = _get(request, API["prov_list"])
-    _, categorias  = _get(request, API["cats_all"])
+    # meter tus meds reales en el page_obj
+    page_obj.object_list = meds_sorted
+
+    # --- proveedores y categorías (para los selects) ---
+    _, proveedores = _cached_get(request, API["prov_list"], cache_seconds=60)
+    _, categorias = _cached_get(request, API["cats_all"], cache_seconds=60)
 
     context = {
-        "inventory": page_obj.object_list,
-        "page_obj": page_obj,
+        "inventory": page_obj.object_list,  # lo que pintas en la tabla
+        "page_obj": page_obj,              # para la paginación
         "total_medicamentos": total_medicamentos,
+        # los KPIs los dejamos así por ahora, luego los jalamos bien de /stats
         "por_caducar": por_caducar,
-        "stock_critico": stock_critico,
+        "stock_critico": bajoStock,
         "medicamento_agotado": medicamento_agotado,
-        "pedidos_pendientes": 0,  # por si luego lo conectas con pedidos reales
+        "pedidos_pendientes": 0,
         "proveedores": proveedores if isinstance(proveedores, list) else [],
         "categorias": categorias if isinstance(categorias, list) else [],
     }
 
     return render(request, "core/inventory.html", context)
-
 
 # Crear medicamento (desde el modal del inventario)
 @role_required("admin")
@@ -918,10 +1161,57 @@ def detalle_medicamento_view(request, medicamento_id):
 # =========================
 @role_required("admin")
 def report_view(request):
-    err, reports = _get(request, API["meds_all"])
+    err, documentos = _cached_get(request, DOCS_LISTAR, cache_seconds=30)
     if err == "unauthorized":
         return redirect("login")
-    return render(request, "core/reports.html", {"reports": reports if isinstance(reports, list) else []})
+
+    documentos = documentos if isinstance(documentos, list) else []
+
+    # Función para parsear fechas de forma segura
+    def parse_created_at(doc):
+        raw = doc.get("createdAt") or doc.get("fecha") or ""
+        try:
+            # Maneja el formato ISO con 'Z'
+            return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except Exception:
+            try:
+                # Fallback para formatos como 'YYYY-MM-DD'
+                return datetime.strptime(raw[:10], "%Y-%m-%d")
+            except Exception:
+                # Si todo falla, se va al final de la lista
+                return datetime.min
+
+    # 1. Ordenar todos los documentos por fecha, los más nuevos primero.
+    documentos.sort(key=parse_created_at, reverse=True)
+
+    # 2. Clasificar en listas separadas
+    reportes_ia = []
+    ultimas_ventas = []
+    otros_documentos = []
+
+    for doc in documentos:
+        # Normalizar el ID para usarlo en la plantilla de forma consistente
+        if isinstance(doc, dict):
+            doc["doc_id"] = doc.get("_id") or doc.get("id")
+
+        tipo = doc.get("tipoReporte") or doc.get("tipo") or ""
+        mimetype = doc.get("mimetype") or ""
+
+        # Criterio: Si el tipo es 'venta' O el mimetype es 'application/json' (para tickets)
+        if str(tipo).lower() == "venta" or mimetype == "application/json":
+            ultimas_ventas.append(doc)
+        # Criterio: Si el mimetype es 'application/pdf' y no es una venta, lo asumimos como reporte IA
+        elif mimetype == "application/pdf":
+            reportes_ia.append(doc)
+        else:
+            otros_documentos.append(doc)
+
+    contexto = {
+        "reportes_ia": reportes_ia,
+        "ultimas_ventas": ultimas_ventas,
+        "otros_documentos": otros_documentos,
+    }
+    return render(request, "core/reports.html", contexto)
 
 # # =========================
 # # Pedidos
@@ -938,12 +1228,98 @@ def report_view(request):
 # =========================
 @role_required("admin", "usuario")
 def settings_view(request):
-    err, settings = _get(request, API["meds_all"])
-    if err == "unauthorized":
+    """
+    Página de configuración para:
+    1. Perfil de usuario (nombre, email).
+    2. Información de la farmacia (solo admins).
+    3. Cambio de contraseña.
+    """
+    user_id = None
+    try:
+        # Decodificar token para obtener el ID de usuario de forma segura
+        token = request.session.get("jwt", "").split(".")[1]
+        token += "=" * (-len(token) % 4)
+        payload = json.loads(base64.b64decode(token).decode("utf-8"))
+        user_id = payload.get("sub") or payload.get("userId")
+    except (IndexError, TypeError):
+        messages.error(request, "Tu sesión ha expirado o es inválida.")
         return redirect("login")
-    return render(request, "core/settings.html", {"settings": settings if isinstance(settings, list) else []})
 
+    if not user_id:
+        return redirect("login")
 
+    # --- Manejo de formularios (POST) ---
+    if request.method == "POST":
+        form_type = request.POST.get("form_type")
+
+        # --- Formulario: Actualizar Perfil ---
+        if form_type == "profile":
+            payload = {
+                "nombre": (request.POST.get("nombre") or "").strip(),
+                "apellido": (request.POST.get("apellido") or "").strip(),
+                "email": (request.POST.get("email") or "").strip(),
+            }
+            err, r = _put(request, f"{API['users_update']}/{user_id}", payload)
+            if r and r.ok:
+                messages.success(request, "Tu perfil ha sido actualizado.")
+            else:
+                messages.error(request, "No se pudo actualizar tu perfil.")
+            return redirect("settings")
+
+        # --- Formulario: Actualizar Farmacia (Solo Admin) ---
+        elif form_type == "pharmacy" and request.session.get("user_role") == "admin":
+            farmacia_id = request.session.get("farmacia_id")
+            if farmacia_id:
+                payload = {
+                    "nombre": (request.POST.get("farmacia_nombre") or "").strip(),
+                    "direccion": (request.POST.get("farmacia_direccion") or "").strip(),
+                    "telefono": (request.POST.get("farmacia_telefono") or "").strip(),
+                    "rfc": (request.POST.get("farmacia_rfc") or "").strip(),
+                }
+                # Usamos el nuevo endpoint "farm_update"
+                err, r = _put(request, f"{API['farm_update']}/{farmacia_id}", payload)
+                if r and r.ok:
+                    messages.success(request, "La información de la farmacia ha sido actualizada.")
+                else:
+                    messages.error(request, "No se pudo actualizar la farmacia.")
+            else:
+                messages.warning(request, "No hay una farmacia asociada para actualizar.")
+            return redirect("settings")
+
+        # --- Formulario: Cambiar Contraseña ---
+        elif form_type == "password":
+            # NOTA: Esto requiere un endpoint en NestJS como /api/users/change-password
+            # Como no existe, simularemos el flujo y mostraremos un mensaje.
+            # En un caso real, aquí llamarías a _post con la contraseña actual y la nueva.
+            messages.info(request, "La función para cambiar contraseña aún no está implementada en la API.")
+            return redirect("settings")
+
+    # --- Carga de datos inicial (GET) ---
+    context = {
+        "user_data": None,
+        "pharmacy_data": None,
+        "user_role": request.session.get("user_role"),
+    }
+
+    # 1. Obtener datos del usuario
+    err_user, user_data = _get(request, f"{API['users_get']}/{user_id}")
+    if err_user == "unauthorized":
+        return redirect("login")
+    if isinstance(user_data, dict):
+        context["user_data"] = user_data
+
+    # 2. Si es admin, obtener datos de la farmacia
+    if context["user_role"] == "admin":
+        farmacia_id = request.session.get("farmacia_id")
+        if farmacia_id:
+            # Usamos el nuevo endpoint "farm_get"
+            err_farm, pharmacy_data = _get(request, f"{API['farm_get']}/{farmacia_id}")
+            if isinstance(pharmacy_data, dict):
+                context["pharmacy_data"] = pharmacy_data
+        else:
+            messages.warning(request, "No se encontró ID de farmacia en la sesión para cargar sus datos.")
+
+    return render(request, "core/settings.html", context)
 # =========================
 # Proveedores
 # =========================
@@ -1037,60 +1413,7 @@ def proveedores_list_create_json(request):
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    """
-    GET  -> lista de proveedores desde Nest
-    POST -> crea proveedor en Nest
-    """
-    if request.method == 'GET':
-        q = request.GET.get('q') or None
-        status = request.GET.get('status') or None
 
-        if status is not None:
-            if status.lower() == 'true':
-                status = True
-            elif status.lower() == 'false':
-                status = False
-
-        params = {'q': q, 'activo': status}
-        err, data = _get(request, API["prov_list"], params=params)
-
-        if err == "unauthorized":
-            return JsonResponse({"error": "unauthorized"}, status=401)
-
-        return JsonResponse(data if isinstance(data, list) else [], safe=False)
-
-    if request.method == 'POST':
-        try:
-            payload = json.loads(request.body or "{}")
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-        # Teléfono + email -> campo 'contacto' para Nest
-        telefono = payload.pop('telefono', None)
-        email    = payload.pop('email', None)
-
-        contact_parts = []
-        if telefono:
-            contact_parts.append(f"Teléfono: {telefono}")
-        if email:
-            contact_parts.append(f"Email: {email}")
-
-        if contact_parts:
-            payload['contacto'] = ", ".join(contact_parts)
-
-        err, r = _post(request, API["prov_create"], payload)
-        if err == "unauthorized":
-            return JsonResponse({"error": "unauthorized"}, status=401)
-
-        if r and r.ok:
-            return JsonResponse(r.json(), status=r.status_code)
-
-        return JsonResponse(
-            {"error": "Failed to create supplier", "detail": r.text if r else "No response"},
-            status=r.status_code if r else 502
-        )
-
-    return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
 @role_required("admin")
@@ -1213,13 +1536,17 @@ def user_view(request):
 
 @role_required("admin")
 def add_user_view(request):
+    """
+    Crea un usuario nuevo usando la API de Nest.
+    Usa la farmacia del usuario logueado (tomada del access token).
+    """
     if request.method == "POST":
         nombre = (request.POST.get("nombre") or "").strip()
         apellido = (request.POST.get("apellido") or "").strip()
         rol = (request.POST.get("rol") or "").strip()
         email = (request.POST.get("email") or "").strip()
-        contraseña = request.POST.get("contraseña") or ""
-        contraseña_confirm = request.POST.get("contraseña_confirm") or ""
+        contraseña = (request.POST.get("contraseña") or "").strip()
+        contraseña_confirm = (request.POST.get("contraseña_confirm") or "").strip()
 
         form_data = {
             "nombre": nombre,
@@ -1228,27 +1555,36 @@ def add_user_view(request):
             "email": email,
         }
 
-        if not nombre or not apellido or not rol or not email:
+        # Validaciones básicas
+        if not nombre or not apellido or not rol or not email or not contraseña or not contraseña_confirm:
             error = "Todos los campos son obligatorios."
-            return render(request, "core/add_user.html", {"error": error, "form": form_data})
-
-        if len(contraseña) < 8:
-            error = "La contraseña debe tener al menos 8 caracteres."
             return render(request, "core/add_user.html", {"error": error, "form": form_data})
 
         if contraseña != contraseña_confirm:
             error = "Las contraseñas no coinciden."
             return render(request, "core/add_user.html", {"error": error, "form": form_data})
 
+        # ===== obtener farmacia de la sesión =====
+        farmacia_id = request.session.get("farmacia_id")
+        logger.info("Farmacia actual en sesión (para nuevo usuario): %s", farmacia_id)
+
+        # Armar payload base
         payload = {
             "nombre": nombre,
             "apellido": apellido,
             "rol": rol,
             "email": email,
-            "contraseña": contraseña,  # la API la encripta
+            "contraseña": contraseña,  # la API se encarga de encriptarla
         }
 
+        # 🔹 OJO: la API espera "farmacia", no "farmaciaId"
+        if farmacia_id is not None:
+            payload["farmacia"] = farmacia_id
+
+        logger.info("Creando usuario -> payload=%s", payload)
+
         err, r = _post(request, API["users_create"], payload)
+
         if err == "unauthorized":
             return redirect("login")
 
@@ -1338,10 +1674,23 @@ API_MEDICAMENTOS_URL = API["meds_all"]
 API_VENTA_URL = API["venta"]
 
 def obtener_medicamentos_con_token(request):
-    err, data = _get(request, API_MEDICAMENTOS_URL)
+    """
+    Obtiene el catálogo de medicamentos usando el token actual.
+    La API responde: { data: [...], total, page, totalPages }
+    """
+    params = {
+        "page": 1,
+        "limit": 500,   # catálogo para el carrito (ajusta si lo necesitas)
+    }
+    err, data = _get(request, API_MEDICAMENTOS_URL, params=params)
     if err == "unauthorized":
         return []
+
+    if isinstance(data, dict):
+        data = data.get("data", []) or []
+
     return data if isinstance(data, list) else []
+
 
 @role_required("admin", "usuario")
 def carrito_view(request):
@@ -1907,9 +2256,17 @@ def search_meds(request):
 #=====================================
 
 @role_required("admin")
+def docs_list_json(request):
+    """Proxy para obtener la lista de todos los documentos desde la API de NestJS."""
+    err, data = _cached_get(request, DOCS_LISTAR, cache_seconds=30)
+    if err == "unauthorized":
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    return JsonResponse(data if isinstance(data, list) else [], safe=False)
+
+@role_required("admin")
 # Lista por tipo (opcional si lo usas en la UI)
 def docs_by_tipo_json(request, tipo: str):
-    err, data = _get(request, f"{DOCS_LIST}?tipo={tipo}")
+    err, data = _get(request, f"{DOCS_FILE}?tipo={tipo}") # Asumiendo que /api/documentos?tipo=... es correcto
     if err == "unauthorized":
         return JsonResponse({"error":"unauthorized"}, status=401)
     return JsonResponse(data if isinstance(data, list) else [], safe=False)
@@ -1938,6 +2295,71 @@ def doc_descargar_json(request, doc_id: str):
     if err == "unauthorized":
         return JsonResponse({"error": "unauthorized"}, status=401)
     return JsonResponse(data or {}, safe=False)
+
+
+# **NUEVO**: Descargar PDF real (ticket ó PDF de Nest)
+# **Descargar PDF real (ticket ó PDF de Nest)**
+@role_required("admin", "usuario")
+def doc_descargar_pdf(request, doc_id: str):
+    """
+    Descarga un documento como PDF.
+
+    - Si el documento es una venta (ticket), genera un PDF tipo ticket
+      con datos de farmacia, usuario y productos vendidos.
+    - Si es otro tipo de documento (ej. reporte IA en PDF),
+      se hace streaming directo desde la API.
+    """
+    # 1) Primero pedimos el JSON de /api/documentos/descargar/:id
+    err, doc_data = _get(request, f"{DOCS_DESCARGAR}/{doc_id}")
+    if err == "unauthorized":
+        return redirect("login")
+
+    # Si no nos regresan un dict, hacemos proxy directo
+    if not isinstance(doc_data, dict) or not doc_data:
+        return doc_by_id_stream(request, doc_id)
+
+    # 2) Normalizar: muchas APIs mandan la venta anidada en "venta"
+    ticket_obj = doc_data.get("venta") or doc_data
+
+    if not isinstance(ticket_obj, dict):
+        # Nada útil -> proxy directo
+        return doc_by_id_stream(request, doc_id)
+
+    # 3) Detectar si es un ticket de venta
+    tipo = str(
+        ticket_obj.get("tipoReporte")
+        or ticket_obj.get("tipo")
+        or doc_data.get("tipoReporte")
+        or doc_data.get("tipo")
+        or ""
+    ).lower()
+
+    mimetype = str(
+        doc_data.get("mimetype")
+        or ticket_obj.get("mimetype")
+        or ""
+    ).lower()
+
+    tiene_items = bool(ticket_obj.get("detalles") or ticket_obj.get("items"))
+
+    es_ticket_venta = (
+        tipo == "venta"
+        or mimetype == "application/json"
+        or tiene_items
+    )
+
+    if es_ticket_venta:
+        # 4) Generar el PDF bonito de ticket
+        pdf_bytes = _build_ticket_pdf(ticket_obj)
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="ticket_venta_{doc_id}.pdf"'
+        )
+        return response
+
+    # 5) Si no es venta, hacemos streaming del archivo original (PDF de IA, etc.)
+    return doc_by_id_stream(request, doc_id)
 
 # Detalle de venta por ID (para fallbacks de jsPDF si lo necesitaras)
 @role_required("admin", "usuario")
